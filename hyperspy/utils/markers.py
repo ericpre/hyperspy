@@ -22,3 +22,4 @@ from hyperspy.drawing._markers.horizontal_line_segment \
 from hyperspy.drawing._markers.rectangle import Rectangle as rectangle
 from hyperspy.drawing._markers.point import Point as point
 from hyperspy.drawing._markers.text import Text as text
+from hyperspy.drawing._markers.vertical_range import VerticalRange as vertical_range

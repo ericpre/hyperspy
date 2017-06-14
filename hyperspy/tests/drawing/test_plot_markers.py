@@ -406,7 +406,7 @@ def test_plot_point_markers_close():
     return _test_plot_point_markers()
 
 
-def _test_plot_text_markers():
+def _test_plot_text_range_markers():
     s = Signal1D(np.arange(100).reshape([10, 10]))
     s.plot(navigator='spectrum')
     for i in range(s.axes_manager.shape[0]):
@@ -415,26 +415,28 @@ def _test_plot_text_markers():
     x = s.axes_manager.shape[-1] / 2  # middle of signal plot
     m = markers.text(x=x, y=s.inav[x].data + 2, text=[i for i in 'abcdefghij'])
     s.add_marker(m)
+    mr = markers.vertical_range(x1=5, x2=8)
+    s.add_marker(mr)
     return s
 
 
 @pytest.mark.mpl_image_compare(
     baseline_dir=baseline_dir, tolerance=default_tol, style=style_pytest_mpl)
 def test_plot_text_markers_nav(mpl_cleanup):
-    s = _test_plot_text_markers()
+    s = _test_plot_text_range_markers()
     return s._plot.navigator_plot.figure
 
 
 @pytest.mark.mpl_image_compare(
     baseline_dir=baseline_dir, tolerance=default_tol, style=style_pytest_mpl)
 def test_plot_text_markers_sig(mpl_cleanup):
-    s = _test_plot_text_markers()
+    s = _test_plot_text_range_markers()
     return s._plot.signal_plot.figure
 
 
 @update_close_figure
 def test_plot_text_markers_close():
-    return _test_plot_text_markers()
+    return _test_plot_text_range_markers()
 
 
 def _test_plot_line_markers():

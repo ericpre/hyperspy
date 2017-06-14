@@ -20,6 +20,7 @@
 import numpy as np
 import matplotlib
 
+import hyperspy
 from hyperspy.drawing.widgets import ResizableDraggableWidgetBase
 from hyperspy.events import Events, Event
 
@@ -51,6 +52,7 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self._SpanSelector_kwargs = SpanSelector_kwargs
         if self.ax is not None:
             self._add_patch()
+        self.marker = hyperspy.utils.markers.vertical_range(x1=0, x2=0)
 
     def set_on(self, value):
         if value is not self.is_on() and self.ax is not None:

@@ -242,10 +242,12 @@ def dict2marker(marker_dict, marker_name):
         marker = markers.vertical_line.VerticalLine(0)
     elif marker_type == 'VerticalLineSegment':
         marker = markers.vertical_line_segment.VerticalLineSegment(0, 0, 0)
+    elif marker_type == 'VerticalRange':
+        marker = markers.vertical_range.VerticalRange(0, 0)
     else:
         _log = logging.getLogger(__name__)
         _log.warning(
-            "Marker {} with marker type {} "
+            "Marker {} with marker type {} "
             "not recognized".format(marker_name, marker_type))
         return(False)
     marker.set_data(**marker_dict['data'])
