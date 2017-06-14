@@ -42,6 +42,7 @@ class MPL_HyperExplorer(object):
         self.quantity_label = ''
         self.signal_plot = None
         self.navigator_plot = None
+        self.signal = None
         self.axis = None
         self.pointer = None
         self._pointer_nav_dim = None
@@ -82,6 +83,7 @@ class MPL_HyperExplorer(object):
             if axis.units is not Undefined:
                 sf.xlabel += ' (%s)' % axis.units
             sf.ylabel = r'$\Sigma\mathrm{data\,over\,all\,other\,axes}$'
+            sf.signal = self.signal
             sf.axis = axis
             sf.axes_manager = self.axes_manager
             self.navigator_plot = sf
@@ -106,6 +108,7 @@ class MPL_HyperExplorer(object):
         elif len(self.navigator_data_function().shape) >= 2:
             imf = image.ImagePlot()
             imf.data_function = self.navigator_data_function
+            imf.signal = self.signal
             imf.colorbar = colorbar
             imf.scalebar = scalebar
             imf.scalebar_color = scalebar_color

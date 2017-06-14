@@ -1964,6 +1964,7 @@ class BaseSignal(FancySlicing,
                 "'s.transpose(signal_axes=(1,2)).plot()' "
                 "for plotting as a 2D signal.")
 
+        self._plot.signal = self
         self._plot.axes_manager = axes_manager
         self._plot.signal_data_function = self.__call__
         if self.metadata.General.title:
@@ -4242,7 +4243,7 @@ class BaseSignal(FancySlicing,
 
     def add_marker(
             self, marker, plot_on_signal=True, plot_marker=True,
-            permanent=False, plot_signal=True):
+            permanent=False, plot_signal=True, metadata_node=None):
         """
         Add a marker to the signal or navigator plot.
 
@@ -4316,14 +4317,16 @@ class BaseSignal(FancySlicing,
         >>> s.add_marker(marker_list, permanent=True)
 
         """
+        if metadata_node is None:
+            metadata_node = 'Markers'
         if isiterable(marker):
             marker_list = marker
         else:
             marker_list = [marker]
         markers_dict = {}
         if permanent:
-            if not self.metadata.has_item('Markers'):
-                self.metadata.add_node('Markers')
+            if not self.metadata.has_item(metadata_node):
+                self.metadata.add_node(metadata_node)
             marker_object_list = []
             for marker_tuple in list(self.metadata.Markers):
                 marker_object_list.append(marker_tuple[1])

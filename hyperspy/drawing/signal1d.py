@@ -47,8 +47,10 @@ class RangeWidgetsContainer(object):
     """
 
     def __init__(self, SpanSelector_kwargs={}):
-        # Add widget permanently and save to metadata
+        # TODO: find the right moment to save/update the marker to metadata
+        # TODO: look for widget in the metadata and load them
         super().__init__()
+        self.signal = None
         self._SpanSelector_kwargs = SpanSelector_kwargs
         self.widget_list = []
         self._add_new_widget = False
@@ -98,14 +100,12 @@ class RangeWidgetsContainer(object):
         self.widget_list.remove(obj)
 
     def _create_widget(self):
-        return RangeWidget(self.axes_manager, ax=self.ax,
+        return RangeWidget(self.axes_manager, ax=self.ax, signal = self.signal,
                            **self._SpanSelector_kwargs)
 
-    def _widget_to_marker(self):
-        pass
-
     def _add_to_metadata(self):
-        pass
+        for widget in self.widget_list:
+            widget.add_marker()
 
     def interactive(self, is_interactive=True):
         # TODO: find a better name for this method

@@ -87,6 +87,7 @@ class MPL_HyperSignal1D_Explorer(MPL_HyperExplorer):
                                      " Signal")
         sf.xlabel = self.xlabel
         sf.ylabel = self.ylabel
+        sf.signal = self.signal
         sf.axis = self.axis
         sf.create_axis()
         sf.axes_manager = self.axes_manager

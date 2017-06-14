@@ -43,16 +43,17 @@ class RangeWidget(ResizableDraggableWidgetBase):
     value and index space coordinates, respectivly.
     """
 
-    def __init__(self, axes_manager, ax=None, **SpanSelector_kwargs):
+    def __init__(self, axes_manager, ax=None, permanent=False, signal=None,
+                 **SpanSelector_kwargs):
         super(RangeWidget, self).__init__(axes_manager)
         self.span = None
         self.ax = ax
+        self.signal = signal
         if 'direction' not in SpanSelector_kwargs.keys():
               SpanSelector_kwargs['direction'] = 'horizontal'      
         self._SpanSelector_kwargs = SpanSelector_kwargs
         if self.ax is not None:
             self._add_patch()
-        self.marker = hyperspy.utils.markers.vertical_range(x1=0, x2=0)
 
     def set_on(self, value):
         if value is not self.is_on() and self.ax is not None:
@@ -84,6 +85,14 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.span.step_ax = self.axes[0]
         self.span.tolerance = 5
         self.patch = [self.span.rect]
+
+    def add_marker(self):
+        self.marker = hyperspy.utils.markers.vertical_range(x1=0, x2=0)
+        self.signal.add_marker(self.marker, permanent=True, plot_marker=False)
+
+    def update_marker(self):
+        x1, x2 = self._get_range()
+        self.marker.set_data(x1=x1, x2=x2)
 
     def set_picker(self, picker):
         if self.span is not None:
