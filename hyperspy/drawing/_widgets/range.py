@@ -194,6 +194,9 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.span.snap_size = value
         self._update_patch_size()
 
+    def mouse_on_widget(self, event):
+        return self.span.mouse_on_span(event)
+
 
 class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
 
@@ -475,6 +478,10 @@ class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
         self.buttonDown = False
         self.canvas.mpl_disconnect(self.on_move_cid)
         self.on_move_cid = None
+
+    def mouse_on_span(self, event):
+        contains, attrd = self.rect.contains(event)
+        return contains
 
     def turn_off(self):
         for cid in self.cids:

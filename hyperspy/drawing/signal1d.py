@@ -29,11 +29,28 @@ from hyperspy.events import Event, Events
 
 
 class RangeWidgetsContainer(object):
+    """ Container to add and remove widgets to a figure
+
+    Attributes
+    ----------
+    widgets : list
+        List of widgets
+
+    Methods
+    -------
+    interactive : bool
+        Allow inserting or removing widgets interactively.
+
+    add_widgets: add widget by using a list of object or a single object. The
+        object can be a 2-tuple corresponding to the start and end position, a 
+        range widget or a marker having a 'x1' and 'x2' data.
+    """
 
     def __init__(self, SpanSelector_kwargs={}):
+        # Add widget permanently and save to metadata
         super().__init__()
         self._SpanSelector_kwargs = SpanSelector_kwargs
-        self.range_widgets = []
+        self.widget_list = []
         self._add_new_widget = False
 
     def add_widgets(self, obj):
@@ -42,8 +59,9 @@ class RangeWidgetsContainer(object):
 
         Parameters
         ----------
-        widgets : tuple, hyperspy.drawing.widget, hyperspy.drawing.marker or 
-                a list of these.
+        obj : add widget by using a list of object or a single object. The
+            object can be a 2-tuple corresponding to the start and end 
+            position, a range widget or a marker having a 'x1' and 'x2' data.
         """
         if type(obj) is list:
             for ob in obj:
@@ -53,7 +71,7 @@ class RangeWidgetsContainer(object):
 
     def _add_widget(self, obj=None):
         if isinstance(obj, RangeWidget):
-            self.range_widgets.append(obj)
+            self.widget_list.append(obj)
         else:
             widget = self._create_widget()
             if isinstance(obj, hyperspy.utils.markers.rectangle):
@@ -66,7 +84,18 @@ class RangeWidgetsContainer(object):
             if position is not None:
                 widget.span.set_initial(position)
                 self._add_new_widget = False
-            self.range_widgets.append(widget)
+            self.widget_list.append(widget)
+
+    def delete_widget(self, obj):
+        """Delete a widget. The widget can be selected either by providing
+        itself or its index in the widget_list.
+        """
+        if type(obj) is int:
+            obj = self.widget_list[obj]
+        elif not isinstance(obj, RangeWidget):
+            return
+        obj.disconnect()
+        self.widget_list.remove(obj)
 
     def _create_widget(self):
         return RangeWidget(self.axes_manager, ax=self.ax,
@@ -78,23 +107,39 @@ class RangeWidgetsContainer(object):
     def _add_to_metadata(self):
         pass
 
-    def activate_widgets(self):
-        self.keyPress = self.figure.canvas.mpl_connect('key_press_event',
-                                                       self.onKeyPress)
-        self.buttonRelease = self.figure.canvas.mpl_connect('button_release_event',
-                                                            self.onRelease)
+    def interactive(self, is_interactive=True):
+        # TODO: find a better name for this method
+        if is_interactive:
+            self.keyPress = self.figure.canvas.mpl_connect('key_press_event',
+                                                           self._onKeyPress)
+            self.buttonRelease = self.figure.canvas.mpl_connect('button_release_event',
+                                                                self._onRelease)
+        else:
+            self.figure.canvas.mpl_disconnect(self.keyPress)
+            self.figure.canvas.mpl_disconnect(self.buttonPress)
 
-    def deactivate_widgets(self):
-        self.figure.canvas.mpl_disconnect(self.keyPress)
-        self.figure.canvas.mpl_disconnect(self.buttonPress)
-
-    def onKeyPress(self, event):
+    def _onKeyPress(self, event):
+        """ Add widget by pressing on 'control' key, delete span by pressing 
+        'delete' key.
+        """
         if event.key == 'control' and not self._add_new_widget:
             self._add_widget()
             self._add_new_widget = True
+        elif event.key == 'delete':
+            on_widget, widget = self._mouse_on_widget(event)
+            if on_widget:
+                self.delete_widget(widget)
 
-    def onRelease(self, event):
+    def _onRelease(self, event):
         self._add_new_widget = False
+
+    def _mouse_on_widget(self, event):
+        """ Return a (True, widget) if the mouse on a widget 
+        else (False, None)"""
+        for widget in self.widget_list:
+            if widget.mouse_on_widget(event):
+                return True, widget
+        return False, None
 
 
 class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
@@ -112,7 +157,6 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
         self.ax_markers = list()
         self.axes_manager = None
         self.right_axes_manager = None
-        self.range_widgets = []
 
         # Labels
         self.xlabel = ''
