@@ -23,10 +23,41 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 from hyperspy.drawing.figure import BlittedFigure
 from hyperspy.drawing import utils
+from hyperspy.drawing.widgets import RangeWidget
 from hyperspy.events import Event, Events
 
 
-class Signal1DFigure(BlittedFigure):
+class RangeWidgetsContainer(object):
+
+    def __init__(self):
+        self._add_new_widget = False
+        self.range_widgets = []
+
+    def activate_widgets(self):
+        self.keyPress = self.figure.canvas.mpl_connect('key_press_event',
+                                                       self.onKeyPress)
+        self.buttonRelease = self.figure.canvas.mpl_connect('button_release_event',
+                                                            self.onRelease)
+        self._add_new_widget = False
+
+    def deactivate_widgets(self):
+        self.figure.canvas.mpl_disconnect(self.keyPress)
+        self.figure.canvas.mpl_disconnect(self.buttonPress)
+
+    def onKeyPress(self, event):
+        if event.key == 'control' and not self._add_new_widget:
+            self._add_widget()
+            self._add_new_widget = True
+
+    def onRelease(self, event):
+        self._add_new_widget = False
+
+    def _add_widget(self, **kwargs):
+        widget = RangeWidget(self.axes_manager, ax=self.ax, **kwargs)
+        self.range_widgets.append(widget)
+
+
+class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
 
     """
     """
@@ -41,6 +72,7 @@ class Signal1DFigure(BlittedFigure):
         self.ax_markers = list()
         self.axes_manager = None
         self.right_axes_manager = None
+        self.range_widgets = []
 
         # Labels
         self.xlabel = ''
