@@ -21,6 +21,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 
+import hyperspy
 from hyperspy.drawing.figure import BlittedFigure
 from hyperspy.drawing import utils
 from hyperspy.drawing.widgets import RangeWidget
@@ -29,16 +30,59 @@ from hyperspy.events import Event, Events
 
 class RangeWidgetsContainer(object):
 
-    def __init__(self):
-        self._add_new_widget = False
+    def __init__(self, SpanSelector_kwargs={}):
+        super().__init__()
+        self._SpanSelector_kwargs = SpanSelector_kwargs
         self.range_widgets = []
+        self._add_new_widget = False
+
+    def add_widgets(self, obj):
+        """
+        Add one or several widgets.
+
+        Parameters
+        ----------
+        widgets : tuple, hyperspy.drawing.widget, hyperspy.drawing.marker or 
+                a list of these.
+        """
+        if type(obj) is list:
+            for ob in obj:
+                self._add_widget(ob)
+        else:
+            self._add_widget(obj)
+
+    def _add_widget(self, obj=None):
+        if isinstance(obj, RangeWidget):
+            self.range_widgets.append(obj)
+        else:
+            widget = self._create_widget()
+            if isinstance(obj, hyperspy.utils.markers.rectangle):
+                position = (obj.data['x1'][()], obj.data['x2'][()])
+                # update matplotlib artists of the widget
+                plt.setp(widget.span.rect, **obj.marker_properties)
+            else:
+                # in case of a tuple
+                position = obj
+            if position is not None:
+                widget.span.set_initial(position)
+                self._add_new_widget = False
+            self.range_widgets.append(widget)
+
+    def _create_widget(self):
+        return RangeWidget(self.axes_manager, ax=self.ax,
+                           **self._SpanSelector_kwargs)
+
+    def _widget_to_marker(self):
+        pass
+
+    def _add_to_metadata(self):
+        pass
 
     def activate_widgets(self):
         self.keyPress = self.figure.canvas.mpl_connect('key_press_event',
                                                        self.onKeyPress)
         self.buttonRelease = self.figure.canvas.mpl_connect('button_release_event',
                                                             self.onRelease)
-        self._add_new_widget = False
 
     def deactivate_widgets(self):
         self.figure.canvas.mpl_disconnect(self.keyPress)
@@ -52,10 +96,6 @@ class RangeWidgetsContainer(object):
     def onRelease(self, event):
         self._add_new_widget = False
 
-    def _add_widget(self, **kwargs):
-        widget = RangeWidget(self.axes_manager, ax=self.ax, **kwargs)
-        self.range_widgets.append(widget)
-
 
 class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
 
@@ -63,7 +103,7 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
     """
 
     def __init__(self, title=""):
-        super(Signal1DFigure, self).__init__()
+        super().__init__()
         self.figure = None
         self.ax = None
         self.right_ax = None

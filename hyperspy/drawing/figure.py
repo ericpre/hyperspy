@@ -7,6 +7,7 @@ from hyperspy.events import Event, Events
 class BlittedFigure(object):
 
     def __init__(self):
+        super().__init__()
         self._background = None
         self.events = Events()
         self.events.closed = Event("""
