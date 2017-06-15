@@ -358,6 +358,8 @@ class DraggableWidgetBase(WidgetBase):
         self._update_patch_position()
 
     def _validate_pos(self, pos):
+        # TODO snap position not working properly when span is initialised (at
+        # least with the mouse)
         """Validates the passed position. Depending on the position and the
         implementation, this can either fire a ValueError, or return a modified
         position that has valid values. Or simply return the unmodified

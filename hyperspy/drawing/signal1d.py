@@ -29,7 +29,8 @@ from hyperspy.events import Event, Events
 
 
 class RangeWidgetsContainer(object):
-    """ Container to add and remove widgets to a figure
+    """ Container to add and remove widgets to a figure. When the figure is
+        closed, the widgets are saved as marker in the metadata.
 
     Attributes
     ----------
@@ -47,13 +48,13 @@ class RangeWidgetsContainer(object):
     """
 
     def __init__(self, SpanSelector_kwargs={}):
-        # TODO: find the right moment to save/update the marker to metadata
-        # TODO: look for widget in the metadata and load them
         super().__init__()
         self.signal = None
         self._SpanSelector_kwargs = SpanSelector_kwargs
         self.widget_list = []
         self._add_new_widget = False
+        # Default name of the metadata node to store widget as marker
+        self.metadata_node_name = 'Widgets'
 
     def add_widgets(self, obj):
         """
@@ -76,8 +77,10 @@ class RangeWidgetsContainer(object):
             self.widget_list.append(obj)
         else:
             widget = self._create_widget()
-            if isinstance(obj, hyperspy.utils.markers.rectangle):
-                position = (obj.data['x1'][()], obj.data['x2'][()])
+            marker_class = hyperspy.utils.markers.__dict__[widget._marker_type]
+            if isinstance(obj, marker_class):
+                position = (obj.get_data_position('x1'),
+                            obj.get_data_position('x2'))
                 # update matplotlib artists of the widget
                 plt.setp(widget.span.rect, **obj.marker_properties)
             else:
@@ -85,6 +88,8 @@ class RangeWidgetsContainer(object):
                 position = obj
             if position is not None:
                 widget.span.set_initial(position)
+                # manual first sync of spin with widget
+                widget._span_changed(widget.span)
                 self._add_new_widget = False
             self.widget_list.append(widget)
 
@@ -100,12 +105,37 @@ class RangeWidgetsContainer(object):
         self.widget_list.remove(obj)
 
     def _create_widget(self):
-        return RangeWidget(self.axes_manager, ax=self.ax, signal = self.signal,
+        return RangeWidget(self.axes_manager, ax=self.ax, signal=self.signal,
                            **self._SpanSelector_kwargs)
 
-    def _add_to_metadata(self):
-        for widget in self.widget_list:
-            widget.add_marker()
+    def _is_navigation_plot(self):
+        """ Return if this is a navigation or signal figure"""
+        # If it has a pointer, it is a navigation plot
+        return hasattr(self, 'pointer')
+
+    def add_widgets_to_metadata(self, metadata, node_name=None,
+                                delete_widgets=False):
+        """ Add all widgets to metadata as marker. """
+        if node_name is None:
+            node_name = self.metadata_node_name
+        for i, widget in enumerate(self.widget_list):
+            marker = widget.to_marker()
+            marker._plot_on_signal = not self._is_navigation_plot()
+            metadata.set_item("{}.range{}".format(node_name, i),
+                              marker)
+        if delete_widgets:
+            self.widget_list = []
+
+    def create_widgets_from_metadata(self, metadata, node_name=None):
+        """ Create widgets from the markers saved in metadata. Use the 
+            node_name to specify the location of the markers."""
+        if node_name is None:
+            node_name = self.metadata_node_name
+        if not metadata.has_item(node_name):
+            return
+        marker_node = metadata.get_item(node_name)
+        for key in marker_node.keys():
+            self._add_widget(marker_node[key])
 
     def interactive(self, is_interactive=True):
         # TODO: find a better name for this method
@@ -151,6 +181,7 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
         super().__init__()
         self.figure = None
         self.ax = None
+        self.signal = None
         self.right_ax = None
         self.ax_lines = list()
         self.right_ax_lines = list()
@@ -252,6 +283,9 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
             return  # Already closed
         for line in self.ax_lines + self.right_ax_lines:
             line.close()
+        if len(self.widget_list) > 0:
+            self.add_widgets_to_metadata(self.signal.metadata,
+                                         delete_widgets=True)
         super(Signal1DFigure, self)._on_close()
 
     def update(self):

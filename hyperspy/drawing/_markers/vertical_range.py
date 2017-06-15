@@ -50,7 +50,7 @@ class VerticalRange(MarkerBase):
 
     def __init__(self, x1, x2, **kwargs):
         MarkerBase.__init__(self)
-        lp = {'color': 'red', 'alpha': 0.5}
+        lp = {'color': 'red', 'alpha': 0.25}
         self.marker_properties = lp
         self.set_data(x1=x1, x2=x2)
         self.set_marker_properties(**kwargs)

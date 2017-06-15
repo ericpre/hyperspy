@@ -50,10 +50,11 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.ax = ax
         self.signal = signal
         if 'direction' not in SpanSelector_kwargs.keys():
-              SpanSelector_kwargs['direction'] = 'horizontal'      
+            SpanSelector_kwargs['direction'] = 'horizontal'
         self._SpanSelector_kwargs = SpanSelector_kwargs
         if self.ax is not None:
             self._add_patch()
+        self._marker_type = 'vertical_range'
 
     def set_on(self, value):
         if value is not self.is_on() and self.ax is not None:
@@ -74,9 +75,10 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.ax = ax
         self._add_patch()
         self.span.set_initial(self._get_range())
-        
+
     def _add_patch(self):
-        self.span = ModifiableSpanSelector(self.ax, **self._SpanSelector_kwargs)
+        self.span = ModifiableSpanSelector(
+            self.ax, **self._SpanSelector_kwargs)
         self.span.bounds_check = True
         self.span.snap_position = self.snap_position
         self.span.snap_size = self.snap_size
@@ -86,13 +88,13 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.span.tolerance = 5
         self.patch = [self.span.rect]
 
-    def add_marker(self):
-        self.marker = hyperspy.utils.markers.vertical_range(x1=0, x2=0)
-        self.signal.add_marker(self.marker, permanent=True, plot_marker=False)
-
-    def update_marker(self):
+    def to_marker(self, signal_plot=True):
+        mp = {'color': self.span.color, 'alpha': self.patch[0].get_alpha()}
+        self._span_changed(self.span)
         x1, x2 = self._get_range()
-        self.marker.set_data(x1=x1, x2=x2)
+        return hyperspy.utils.markers.__dict__[self._marker_type](x1=x1,
+                                                                  x2=x2,
+                                                                  **mp)
 
     def set_picker(self, picker):
         if self.span is not None:
@@ -215,9 +217,12 @@ class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
         onselect = kwargs.pop('onselect', self.dummy)
         useblit = kwargs.pop('useblit', False)
         direction = kwargs.pop('direction', 'horizontal')
+        rectprops = kwargs.pop('rectprops', {'color':'red', 'alpha':0.25})
+        self.color = rectprops['color']
         matplotlib.widgets.SpanSelector.__init__(self, ax, onselect,
-                                                 useblit=useblit, 
+                                                 useblit=useblit,
                                                  direction=direction,
+                                                 rectprops=rectprops,
                                                  **kwargs)
         # The tolerance in points to pick the rectangle sizes
         self.tolerance = 1
