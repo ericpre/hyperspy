@@ -164,11 +164,17 @@ class RangeWidgetsContainer(object):
         """
         if not self._is_add_widget_interactive:
             return
+        on_widget, widget = self._mouse_on_widget(event)
         if event.key == 'control' and not self._add_new_widget:
+            # if the mouse is on a widget, deactivate it 
+            if on_widget:
+                widget.active = False
             self._add_widget()
             self._add_new_widget = True
+            # reactivate the widget that have just been deactivated
+            if on_widget:
+                widget.active = False
         elif event.key == 'delete':
-            on_widget, widget = self._mouse_on_widget(event)
             if on_widget:
                 self.remove_widget(widget)
 

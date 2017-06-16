@@ -42,6 +42,7 @@ class RangeWidget(ResizableDraggableWidgetBase):
     'set_bounds' and 'set_ibounds', to set the geometry of the rectangle by
     value and index space coordinates, respectivly.
     """
+    # TODO: change increase alpha of span when widget is selected? 
 
     def __init__(self, axes_manager, ax=None, permanent=False, signal=None,
                  **SpanSelector_kwargs):
@@ -70,6 +71,14 @@ class RangeWidget(ResizableDraggableWidgetBase):
             if value is False:
                 self.ax = None
         self._WidgetBase__is_on = value
+
+    @property
+    def active(self):
+        return self.span.active
+
+    @active.setter
+    def active(self, value):
+        self.span.active = value
 
     def _add_patch_to(self, ax):
         self.ax = ax
@@ -215,12 +224,12 @@ class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
 
     def __init__(self, ax, **kwargs):
         onselect = kwargs.pop('onselect', self.dummy)
-        useblit = kwargs.pop('useblit', False)
         direction = kwargs.pop('direction', 'horizontal')
         rectprops = kwargs.pop('rectprops', {'color':'red', 'alpha':0.25})
         self.color = rectprops['color']
+        kwargs['useblit'] = False
+        kwargs['span_stays'] = False
         matplotlib.widgets.SpanSelector.__init__(self, ax, onselect,
-                                                 useblit=useblit,
                                                  direction=direction,
                                                  rectprops=rectprops,
                                                  **kwargs)
@@ -296,19 +305,26 @@ class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
         if initial_range is not None:
             self.range = initial_range
 
-        for cid in self.cids:
-            self.canvas.mpl_disconnect(cid)
+        self.disconnect()
         # And connect to the new ones
+        self.connect()
+
+        self.rect.set_visible(True)
+        self.rect.contains = self.contains
+        self.update()
+
+    def connect(self):
         self.cids.append(
             self.canvas.mpl_connect('button_press_event', self.mm_on_press))
         self.cids.append(
             self.canvas.mpl_connect('button_release_event',
                                     self.mm_on_release))
         self.cids.append(
-            self.canvas.mpl_connect('draw_event', self.update_background))
-        self.rect.set_visible(True)
-        self.rect.contains = self.contains
-        self.update()
+            self.canvas.mpl_connect('draw_event', self.update_background))        
+
+    def disconnect(self):
+        for cid in self.cids:
+            self.canvas.mpl_disconnect(cid)        
 
     def contains(self, mouseevent):
         x, y = self.rect.get_transform().inverted().transform_point(
@@ -500,9 +516,8 @@ class ModifiableSpanSelector(matplotlib.widgets.SpanSelector):
         return contains
 
     def turn_off(self):
-        for cid in self.cids:
-            self.canvas.mpl_disconnect(cid)
+        self.disconnect()
         if self.on_move_cid is not None:
-            self.canvas.mpl_disconnect(cid)
+            self.canvas.mpl_disconnect(self.on_move_cid)
         self.ax.patches.remove(self.rect)
         self.ax.figure.canvas.draw_idle()
