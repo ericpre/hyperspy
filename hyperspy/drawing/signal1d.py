@@ -39,12 +39,20 @@ class RangeWidgetsContainer(object):
 
     Methods
     -------
-    interactive : bool
-        Allow inserting or removing widgets interactively.
-
     add_widgets: add widget by using a list of object or a single object. The
         object can be a 2-tuple corresponding to the start and end position, a 
         range widget or a marker having a 'x1' and 'x2' data.
+
+    remove_widget: remove a widget from the plot and from the widget_list.
+
+    add_widgets_to_metadata: Add widgets (as markers) to the given node name
+        of the given metadata.
+
+    create_widgets_from_metadata: add widgets to the figure from the given node
+        name of the given metadata.
+
+    add_widgets_interactively: add widget interactively: use the control `key` 
+        to widget and the `delete` key to remove widget.
     """
 
     def __init__(self, SpanSelector_kwargs={}):
@@ -53,8 +61,10 @@ class RangeWidgetsContainer(object):
         self._SpanSelector_kwargs = SpanSelector_kwargs
         self.widget_list = []
         self._add_new_widget = False
+        self._is_add_widget_interactive = False
         # Default name of the metadata node to store widget as marker
         self.metadata_node_name = 'Widgets'
+        # TODO: fix issue with overlaying span
 
     def add_widgets(self, obj):
         """
@@ -93,8 +103,8 @@ class RangeWidgetsContainer(object):
                 self._add_new_widget = False
             self.widget_list.append(widget)
 
-    def delete_widget(self, obj):
-        """Delete a widget. The widget can be selected either by providing
+    def remove_widget(self, obj):
+        """Remove a widget. The widget can be selected either by providing
         itself or its index in the widget_list.
         """
         if type(obj) is int:
@@ -114,7 +124,7 @@ class RangeWidgetsContainer(object):
         return hasattr(self, 'pointer')
 
     def add_widgets_to_metadata(self, metadata, node_name=None,
-                                delete_widgets=False):
+                                remove_widgets=False):
         """ Add all widgets to metadata as marker. """
         if node_name is None:
             node_name = self.metadata_node_name
@@ -123,7 +133,7 @@ class RangeWidgetsContainer(object):
             marker._plot_on_signal = not self._is_navigation_plot()
             metadata.set_item("{}.range{}".format(node_name, i),
                               marker)
-        if delete_widgets:
+        if remove_widgets:
             self.widget_list = []
 
     def create_widgets_from_metadata(self, metadata, node_name=None):
@@ -137,9 +147,9 @@ class RangeWidgetsContainer(object):
         for key in marker_node.keys():
             self._add_widget(marker_node[key])
 
-    def interactive(self, is_interactive=True):
-        # TODO: find a better name for this method
-        if is_interactive:
+    def add_widgets_interactively(self, is_interactive=True):
+        self._add_widget_toggled(is_interactive)
+        if self._is_add_widget_interactive:
             self.keyPress = self.figure.canvas.mpl_connect('key_press_event',
                                                            self._onKeyPress)
             self.buttonRelease = self.figure.canvas.mpl_connect('button_release_event',
@@ -152,13 +162,15 @@ class RangeWidgetsContainer(object):
         """ Add widget by pressing on 'control' key, delete span by pressing 
         'delete' key.
         """
+        if not self._is_add_widget_interactive:
+            return
         if event.key == 'control' and not self._add_new_widget:
             self._add_widget()
             self._add_new_widget = True
         elif event.key == 'delete':
             on_widget, widget = self._mouse_on_widget(event)
             if on_widget:
-                self.delete_widget(widget)
+                self.remove_widget(widget)
 
     def _onRelease(self, event):
         self._add_new_widget = False
@@ -170,6 +182,17 @@ class RangeWidgetsContainer(object):
             if widget.mouse_on_widget(event):
                 return True, widget
         return False, None
+
+    def _add_widget_toggled(self, is_interactive):
+        self._is_add_widget_interactive = is_interactive
+        # switch off matplotlib navigate mode when necessary
+        if self._is_add_widget_interactive:
+            toolbar = self.figure.canvas.toolbar
+            if toolbar._active == "PAN":
+                toolbar.pan()
+            elif toolbar._active == "ZOOM":
+                toolbar.zoom()
+            toolbar.set_message('Add widget')
 
 
 class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
@@ -208,6 +231,7 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
             else None)
         utils.on_figure_window_close(self.figure, self._on_close)
         self.figure.canvas.mpl_connect('draw_event', self._on_draw)
+        self.figure.canvas.mpl_connect('key_press_event', self._on_key)
 
     def create_axis(self):
         self.ax = self.figure.add_subplot(111)
@@ -285,7 +309,7 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
             line.close()
         if len(self.widget_list) > 0:
             self.add_widgets_to_metadata(self.signal.metadata,
-                                         delete_widgets=True)
+                                         remove_widgets=True)
         super(Signal1DFigure, self)._on_close()
 
     def update(self):
@@ -294,6 +318,11 @@ class Signal1DFigure(BlittedFigure, RangeWidgetsContainer):
         for line in self.ax_lines + \
                 self.right_ax_lines:
             line.update()
+
+    def _on_key(self, event):
+        if event.key == 'i':
+            self._is_add_widget_interactive = not self._is_add_widget_interactive
+            self.add_widgets_interactively(self._is_add_widget_interactive)
 
 
 class Signal1DLine(object):

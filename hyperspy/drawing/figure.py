@@ -34,30 +34,31 @@ class BlittedFigure(object):
                 canvas.draw_idle()
 
     def _draw_animated(self):
-        if self.ax.figure and self.figure.axes:
-            canvas = self.ax.figure.canvas
-            if canvas.supports_blit:
-                canvas.restore_region(self._background)
-            for ax in self.figure.axes:
-                artists = []
-                artists.extend(ax.images)
-                artists.extend(ax.collections)
-                artists.extend(ax.patches)
-                artists.extend(ax.lines)
-                artists.extend(ax.texts)
-                artists.extend(ax.artists)
-                artists.append(ax.get_yaxis())
-                artists.append(ax.get_xaxis())
-                try:
-                    [ax.draw_artist(a) for a in artists if
-                     a.get_animated() is True]
-                except AttributeError:
-                     # The method was called before draw. This is a quick
-                     # fix. Properly fixing the issue involves avoiding
-                     # calling this method too early in the code.
-                    pass
-            if canvas.supports_blit:
-                canvas.blit(self.figure.bbox)
+        if self.figure.axes:
+            if self.ax.figure:
+                canvas = self.ax.figure.canvas
+                if canvas.supports_blit:
+                    canvas.restore_region(self._background)
+                for ax in self.figure.axes:
+                    artists = []
+                    artists.extend(ax.images)
+                    artists.extend(ax.collections)
+                    artists.extend(ax.patches)
+                    artists.extend(ax.lines)
+                    artists.extend(ax.texts)
+                    artists.extend(ax.artists)
+                    artists.append(ax.get_yaxis())
+                    artists.append(ax.get_xaxis())
+                    try:
+                        [ax.draw_artist(a) for a in artists if
+                         a.get_animated() is True]
+                    except AttributeError:
+                         # The method was called before draw. This is a quick
+                         # fix. Properly fixing the issue involves avoiding
+                         # calling this method too early in the code.
+                        pass
+                if canvas.supports_blit:
+                    canvas.blit(self.figure.bbox)
 
     def add_marker(self, marker):
         marker.ax = self.ax

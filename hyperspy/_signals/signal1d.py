@@ -374,6 +374,28 @@ _spikes_diagnosis,
         model = Model1D(self, dictionary=dictionary)
         return model
 
+    def add_widgets_interactively(self, widget_type, on_signal=True):
+        """Add range windows interactively.
+
+        Parameters
+        ----------
+        widget_type : str
+
+        on_signal : bool
+            If `True`, the windows are added on the signal plot, if not on the
+            navigation plot.
+        """
+        if on_signal:
+            plot_type = 'signal_plot'
+        else:
+            plot_type = 'navigation_plot'
+        # Make sure the plot is displayed
+        if hasattr(self._plot, plot_type):
+            if self._plot.__dict__[plot_type] is not None:
+                self._plot.__dict__[plot_type].add_widgets_interactively()
+        else:
+            _logger.warning('A plot is needed to add windows interactively')
+
     def shift1D(self,
                 shift_array,
                 interpolation_method='linear',
@@ -384,6 +406,7 @@ _spikes_diagnosis,
                 show_progressbar=None):
         """Shift the data in place over the signal axis by the amount specified
         by an array.
+
         Parameters
         ----------
         shift_array : numpy array
@@ -407,6 +430,7 @@ _spikes_diagnosis,
         show_progressbar : None or bool
             If True, display a progress bar. If None the default is set in
             `preferences`.
+
         Raises
         ------
         SignalDimensionError if the signal dimension is not 1.
