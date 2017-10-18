@@ -98,6 +98,7 @@ class ImagePlot(BlittedFigure):
         self._auto_axes_ticks = True
         self.no_nans = False
         self.centre_colormap = "auto"
+        self._axis_in_pixels = False
 
     @property
     def vmax(self):
@@ -146,32 +147,61 @@ class ImagePlot(BlittedFigure):
         else:
             self._user_scalebar = None
 
+    def _add_scalebar(self):
+        if hasattr(self, 'scalebar_widget'):  # for redrawing the scalebar
+            self.scalebar_widget.remove()
+        if self.scalebar is True and self.pixel_units is not None:
+            self.scalebar_widget = widgets.ScaleBar(
+                ax=self.ax,
+                units=self.pixel_units,
+                animated=self.figure.canvas.supports_blit,
+                color=self.scalebar_color)
+
     def configure(self):
+        # Calibrate the axes of the navigator image
+        self._compute_extent()
+        self._calculate_aspect()
+
+    def _compute_extent(self):
         xaxis = self.xaxis
         yaxis = self.yaxis
-        # Signal2D labels
+        if self._axis_in_pixels:
+            self._extent = (xaxis.low_index, xaxis.high_index,
+                            yaxis.high_index, yaxis.low_index)
+        else:
+            self._extent = (xaxis.axis[0] - xaxis.scale / 2.,
+                            xaxis.axis[-1] + xaxis.scale / 2.,
+                            yaxis.axis[-1] + yaxis.scale / 2.,
+                            yaxis.axis[0] - yaxis.scale / 2.)
+
+    def _set_axis_labels(self):
+        def units_to_display(units):
+            return 'px' if self._axis_in_pixels else units
+
+        xaxis = self.xaxis
+        yaxis = self.yaxis
+
         self._xlabel = '%s' % str(xaxis)
         if xaxis.units is not Undefined:
-            self._xlabel += ' (%s)' % xaxis.units
-
+            self._xlabel += ' (%s)' % units_to_display(xaxis.units)
         self._ylabel = '%s' % str(yaxis)
         if yaxis.units is not Undefined:
-            self._ylabel += ' (%s)' % yaxis.units
+            self._ylabel += ' (%s)' % units_to_display(yaxis.units)
 
         if (xaxis.units == yaxis.units) and (xaxis.scale == yaxis.scale):
             self._auto_scalebar = True
             self._auto_axes_ticks = False
-            self.pixel_units = xaxis.units
+            self.pixel_units = units_to_display(xaxis.units)
         else:
             self._auto_scalebar = False
             self._auto_axes_ticks = True
 
-        # Calibrate the axes of the navigator image
-        self._extent = (xaxis.axis[0] - xaxis.scale / 2.,
-                        xaxis.axis[-1] + xaxis.scale / 2.,
-                        yaxis.axis[-1] + yaxis.scale / 2.,
-                        yaxis.axis[0] - yaxis.scale / 2.)
-        self._calculate_aspect()
+        if self.axes_ticks is False:
+            self.ax.set_xticks([])
+            self.ax.set_yticks([])
+
+        self.ax.set_xlabel(self._xlabel)
+        self.ax.set_ylabel(self._ylabel)
 
     def _calculate_aspect(self):
         xaxis = self.xaxis
@@ -189,7 +219,6 @@ class ImagePlot(BlittedFigure):
                 self._auto_scalebar = False
                 self._auto_axes_ticks = True
         self._aspect = np.abs(factor * xaxis.scale / yaxis.scale)
-        # print(self._aspect)
 
     def optimize_contrast(self, data):
         if (self._vmin_user is not None and self._vmax_user is not None):
@@ -218,11 +247,7 @@ class ImagePlot(BlittedFigure):
     def create_axis(self):
         self.ax = self.figure.add_subplot(111)
         self.ax.set_title(self.title)
-        self.ax.set_xlabel(self._xlabel)
-        self.ax.set_ylabel(self._ylabel)
-        if self.axes_ticks is False:
-            self.ax.set_xticks([])
-            self.ax.set_yticks([])
+        self._set_axis_labels()
         self.ax.hspy_fig = self
 
     def plot(self, **kwargs):
@@ -251,14 +276,7 @@ class ImagePlot(BlittedFigure):
         for marker in self.ax_markers:
             marker.plot()
         self.update(**kwargs)
-        if self.scalebar is True:
-            if self.pixel_units is not None:
-                self.ax.scalebar = widgets.ScaleBar(
-                    ax=self.ax,
-                    units=self.pixel_units,
-                    animated=self.figure.canvas.supports_blit,
-                    color=self.scalebar_color,
-                )
+        self._add_scalebar()
 
         if self.colorbar is True:
             self._colorbar = plt.colorbar(self.ax.images[0], ax=self.ax)
@@ -285,10 +303,7 @@ class ImagePlot(BlittedFigure):
     def update(self, **kwargs):
         ims = self.ax.images
         # update extent:
-        self._extent = (self.xaxis.axis[0] - self.xaxis.scale / 2.,
-                        self.xaxis.axis[-1] + self.xaxis.scale / 2.,
-                        self.yaxis.axis[-1] + self.yaxis.scale / 2.,
-                        self.yaxis.axis[0] - self.yaxis.scale / 2.)
+        self._compute_extent()
 
         # Turn on centre_colormap if a diverging colormap is used.
         if self.centre_colormap == "auto":
@@ -413,6 +428,15 @@ class ImagePlot(BlittedFigure):
     def on_key_press(self, event):
         if event.key == 'h':
             self.gui_adjust_contrast()
+        if event.key == 'u':
+            self.toggle_axis_units()
+
+    def toggle_axis_units(self):
+        self._axis_in_pixels = False if self._axis_in_pixels else True
+        self._set_axis_labels()
+        self.update()
+        self._add_scalebar()
+        self.figure.canvas.draw()
 
     def set_contrast(self, vmin, vmax):
         self.vmin, self.vmax = vmin, vmax
