@@ -20,6 +20,7 @@ import copy
 import itertools
 import textwrap
 from traits import trait_base
+from traits.api import Undefined
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import warnings
 import numpy as np
@@ -29,7 +30,6 @@ import hyperspy as hs
 from distutils.version import LooseVersion
 import logging
 
-from hyperspy.defaults_parser import preferences
 
 _logger = logging.getLogger(__name__)
 
@@ -347,8 +347,8 @@ def _make_overlap_plot(spectra, ax, color="blue", line_style='-'):
             zip(spectra, color, line_style)):
         x_axis = spectrum.axes_manager.signal_axes[0]
         ax.plot(x_axis.axis, spectrum.data, color=color, ls=line_style)
-    _set_spectrum_xlabel(spectra if isinstance(spectra, hs.signals.BaseSignal)
-                         else spectra[-1], ax)
+    set_signal1d_labels(spectra if isinstance(spectra, hs.signals.BaseSignal)
+                        else spectra[-1], ax)
     ax.set_ylabel('Intensity')
     ax.autoscale(tight=True)
 
@@ -371,8 +371,8 @@ def _make_cascade_subplot(
         data_to_plot = ((spectrum.data - spectrum.data.min()) /
                         float(max_value) + spectrum_index * padding)
         ax.plot(x_axis.axis, data_to_plot, color=color, ls=line_style)
-    _set_spectrum_xlabel(spectra if isinstance(spectra, hs.signals.BaseSignal)
-                         else spectra[-1], ax)
+    set_signal1d_labels(spectra if isinstance(spectra, hs.signals.BaseSignal)
+                        else spectra[-1], ax)
     ax.set_yticks([])
     ax.autoscale(tight=True)
 
@@ -382,9 +382,30 @@ def _plot_spectrum(spectrum, ax, color="blue", line_style='-'):
     ax.plot(x_axis.axis, spectrum.data, color=color, ls=line_style)
 
 
-def _set_spectrum_xlabel(spectrum, ax):
-    x_axis = spectrum.axes_manager.signal_axes[0]
-    ax.set_xlabel("%s (%s)" % (x_axis.name, x_axis.units))
+def set_signal1d_labels(signal1d, ax, calibrated_axis=True):
+    """Set the x and y labels of 1D signals plot based the information from 
+        the `axes_manager` and the `metadata`.
+
+        Parameters
+        ----------
+        signal1d : hyperspy signal1D
+            Signal from which the labels will be retrieved.
+        ax : matplotlib axis
+            Axis on which the labels will be set.
+        calibrated_axis : bool (default is True)
+            If True, the axis will be calibrated. 
+    """
+    xaxis = signal1d.axes_manager.signal_axes[0]
+    xlabel = '%s' % str(xaxis)
+    if xaxis.units is not Undefined and not calibrated_axis:
+        xlabel += ' (%s)' % xaxis.units
+    ax.set_xlabel(xlabel)
+
+    if signal1d.metadata.has_item("Signal.quantity"):
+        ylabel = signal1d.metadata.Signal.quantity
+    else:
+        ylabel = 'Intensity'
+    ax.set_ylabel(ylabel)
 
 
 def plot_images(images,
@@ -1033,11 +1054,11 @@ def plot_spectra(
         Reverse the ordering of a matplotlib legend (to be more consistent 
         with the default ordering of plots in the 'cascade' and 'overlap' 
         styles
-        
+
         Parameters
         ----------
         ax_: matplotlib axes
-        
+
         legend_loc_: str or int
             This parameter controls where the legend is placed on the 
             figure; see the pyplot.legend docstring for valid values
@@ -1130,9 +1151,9 @@ def plot_spectra(
             if legend is not None:
                 ax.set_title(legend)
             if not isinstance(spectra, hyperspy.signal.BaseSignal):
-                _set_spectrum_xlabel(spectrum, ax)
+                set_signal1d_labels(spectrum, ax)
         if isinstance(spectra, hyperspy.signal.BaseSignal):
-            _set_spectrum_xlabel(spectrum, ax)
+            set_signal1d_labels(spectrum, ax)
         fig.tight_layout()
 
     elif style == 'heatmap':
