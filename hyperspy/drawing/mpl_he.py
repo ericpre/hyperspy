@@ -18,10 +18,7 @@
 from functools import partial
 import logging
 
-from traits.api import Undefined
-
 from hyperspy.drawing import widgets, signal1d, image
-from hyperspy.ui_registry import get_gui
 
 
 _logger = logging.getLogger(__name__)
@@ -36,6 +33,7 @@ class MPL_HyperExplorer(object):
     def __init__(self):
         self.signal_data_function = None
         self.navigator_data_function = None
+        self.signal = None
         self.axes_manager = None
         self.signal_title = ''
         self.navigator_title = ''
@@ -78,11 +76,10 @@ class MPL_HyperExplorer(object):
             # Create the figure
             sf = signal1d.Signal1DFigure(title=title)
             axis = self.axes_manager.navigation_axes[0]
-            sf.xlabel = '%s' % str(axis)
-            if axis.units is not Undefined:
-                sf.xlabel += ' (%s)' % axis.units
             sf.ylabel = r'$\Sigma\mathrm{data\,over\,all\,other\,axes}$'
             sf.axis = axis
+            sf.signal = self.signal
+            sf.set_labels_figure()
             sf.axes_manager = self.axes_manager
             self.navigator_plot = sf
             # Create a line to the left axis with the default

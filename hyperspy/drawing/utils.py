@@ -382,7 +382,7 @@ def _plot_spectrum(spectrum, ax, color="blue", line_style='-'):
     ax.plot(x_axis.axis, spectrum.data, color=color, ls=line_style)
 
 
-def set_signal1d_labels(signal1d, ax, calibrated_axis=True):
+def set_signal1d_labels(signal1d, ax, calibrated=True):
     """Set the x and y labels of 1D signals plot based the information from 
         the `axes_manager` and the `metadata`.
 
@@ -392,12 +392,12 @@ def set_signal1d_labels(signal1d, ax, calibrated_axis=True):
             Signal from which the labels will be retrieved.
         ax : matplotlib axis
             Axis on which the labels will be set.
-        calibrated_axis : bool (default is True)
+        calibrated : bool (default is True)
             If True, the axis will be calibrated. 
     """
     xaxis = signal1d.axes_manager.signal_axes[0]
     xlabel = '%s' % str(xaxis)
-    if xaxis.units is not Undefined and not calibrated_axis:
+    if xaxis.units is not Undefined and calibrated:
         xlabel += ' (%s)' % xaxis.units
     ax.set_xlabel(xlabel)
 
@@ -405,6 +405,8 @@ def set_signal1d_labels(signal1d, ax, calibrated_axis=True):
         ylabel = signal1d.metadata.Signal.quantity
     else:
         ylabel = 'Intensity'
+    if not calibrated:
+        ylabel = ylabel.split('(')[0].strip()
     ax.set_ylabel(ylabel)
 
 

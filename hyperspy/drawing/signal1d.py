@@ -41,10 +41,9 @@ class Signal1DFigure(BlittedFigure):
         self.ax_markers = list()
         self.axes_manager = None
         self.right_axes_manager = None
+        self.signal = None
+        self._calibrated = True
 
-        # Labels
-        self.xlabel = ''
-        self.ylabel = ''
         self.title = title
         self.create_figure()
         self.create_axis()
@@ -68,6 +67,8 @@ class Signal1DFigure(BlittedFigure):
         self.ax.yaxis.set_animated(animated)
         self.ax.xaxis.set_animated(animated)
         self.ax.hspy_fig = self
+        self.figure.canvas.mpl_connect('key_press_event',
+                                       self.on_key_press)
 
     def create_right_axis(self):
         if self.ax is None:
@@ -105,8 +106,6 @@ class Signal1DFigure(BlittedFigure):
                     rgba_color)
 
     def plot(self):
-        self.ax.set_xlabel(self.xlabel)
-        self.ax.set_ylabel(self.ylabel)
         self.ax.set_title(self.title)
         x_axis_upper_lims = []
         x_axis_lower_lims = []
@@ -131,6 +130,10 @@ class Signal1DFigure(BlittedFigure):
                 # complains
                 pass
 
+    def set_labels_figure(self):
+        utils.set_signal1d_labels(self.signal, self.ax,
+                                  self._calibrated)
+
     def _on_close(self):
         if self.figure is None:
             return  # Already closed
@@ -138,12 +141,21 @@ class Signal1DFigure(BlittedFigure):
             line.close()
         super(Signal1DFigure, self)._on_close()
 
-    def update(self):
+    def update(self, also_xaxis=False):
         for marker in self.ax_markers:
             marker.update()
-        for line in self.ax_lines + \
-                self.right_ax_lines:
-            line.update()
+        for line in self.ax_lines + self.right_ax_lines:
+            line.update(also_xaxis=also_xaxis, calibrated=self._calibrated)
+
+    def on_key_press(self, event):
+        if event.key == 'u':
+            self.toggle_axis_units()
+
+    def toggle_axis_units(self):
+        self._calibrated = False if self._calibrated else True
+        self.signal._calibrated = self._calibrated
+        self.set_labels_figure()
+        self.update(also_xaxis=True)
 
 
 class Signal1DLine(object):
@@ -283,20 +295,19 @@ class Signal1DLine(object):
             self.ax.figure.canvas.draw_idle()
 
     def plot(self, data=1):
-        f = self.data_function
         if self.get_complex is False:
-            data = f(axes_manager=self.axes_manager).real
+            data = self.data_function(axes_manager=self.axes_manager).real
         else:
-            data = f(axes_manager=self.axes_manager).imag
+            data = self.data_function(axes_manager=self.axes_manager).imag
         if self.line is not None:
             self.line.remove()
         self.line, = self.ax.plot(self.axis.axis, data,
                                   **self.line_properties)
         self.line.set_animated(self.ax.figure.canvas.supports_blit)
-        self.axes_manager.events.indices_changed.connect(self.update, [])
-        self.events.closed.connect(
-            lambda: self.axes_manager.events.indices_changed.disconnect(
-                self.update), [])
+#        self.axes_manager.events.indices_changed.connect(self.update, [])
+#        self.events.closed.connect(
+#            lambda: self.axes_manager.events.indices_changed.disconnect(
+#                self.update), [])
         if not self.axes_manager or self.axes_manager.navigation_size == 0:
             self.plot_indices = False
         if self.plot_indices is True:
@@ -310,7 +321,7 @@ class Signal1DLine(object):
                                      animated=self.ax.figure.canvas.supports_blit)
         self.ax.figure.canvas.draw_idle()
 
-    def update(self, force_replot=False):
+    def update(self, also_xaxis=False, calibrated=True, force_replot=False):
         """Update the current spectrum figure"""
         if self.auto_update is False:
             return
@@ -318,15 +329,22 @@ class Signal1DLine(object):
             self.close()
             self.plot()
         if self.get_complex is False:
-            ydata = self.data_function(axes_manager=self.axes_manager).real
+            ydata = self.data_function(axes_manager=self.axes_manager,
+                                       calibrated=calibrated).real
         else:
-            ydata = self.data_function(axes_manager=self.axes_manager).imag
+            ydata = self.data_function(axes_manager=self.axes_manager,
+                                       calibrated=calibrated).imag
 
         old_xaxis = self.line.get_xdata()
-        if len(old_xaxis) != self.axis.size or \
+
+        if also_xaxis or len(old_xaxis) != self.axis.size or\
                 np.any(np.not_equal(old_xaxis, self.axis.axis)):
-            self.ax.set_xlim(self.axis.axis[0], self.axis.axis[-1])
-            self.line.set_data(self.axis.axis, ydata)
+            if calibrated:
+                xdata = self.axis.axis
+            else:
+                xdata = np.arange(self.axis.high_index + 1)
+            self.ax.set_xlim(xdata[0], xdata[-1])
+            self.line.set_data(xdata, ydata)
         else:
             self.line.set_ydata(ydata)
 
@@ -340,7 +358,8 @@ class Signal1DLine(object):
             y_max, y_min = (np.nanmax(clipped_ydata),
                             np.nanmin(clipped_ydata))
             if self.get_complex:
-                yreal = self.data_function(axes_manager=self.axes_manager).real
+                yreal = self.data_function(axes_manager=self.axes_manager,
+                                           calibrated=calibrated).real
                 clipped_yreal = yreal[y1:y2]
                 y_min = min(y_min, clipped_yreal.min())
                 y_max = max(y_max, clipped_yreal.max())

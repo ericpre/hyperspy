@@ -98,7 +98,7 @@ class ImagePlot(BlittedFigure):
         self._auto_axes_ticks = True
         self.no_nans = False
         self.centre_colormap = "auto"
-        self._calibrated_axis = False
+        self._calibrated = True
 
     @property
     def vmax(self):
@@ -165,7 +165,7 @@ class ImagePlot(BlittedFigure):
     def _compute_extent(self):
         xaxis = self.xaxis
         yaxis = self.yaxis
-        if self._calibrated_axis:
+        if self._calibrated:
             self._extent = (xaxis.low_index, xaxis.high_index,
                             yaxis.high_index, yaxis.low_index)
         else:
@@ -176,7 +176,7 @@ class ImagePlot(BlittedFigure):
 
     def _set_axis_labels(self):
         def units_to_display(units):
-            return 'px' if self._calibrated_axis else units
+            return 'px' if self._calibrated else units
 
         xaxis = self.xaxis
         yaxis = self.yaxis
@@ -319,7 +319,8 @@ class ImagePlot(BlittedFigure):
                 self.centre_colormap = False
         redraw_colorbar = False
         data = rgb_tools.rgbx2regular_array(
-            self.data_function(axes_manager=self.axes_manager),
+            self.data_function(axes_manager=self.axes_manager,
+                               calibrated=self._calibrated),
             plot_friendly=True)
         numrows, numcols = data.shape[:2]
         for marker in self.ax_markers:
@@ -432,7 +433,7 @@ class ImagePlot(BlittedFigure):
             self.toggle_axis_units()
 
     def toggle_axis_units(self):
-        self._calibrated_axis = False if self._calibrated_axis else True
+        self._calibrated = False if self._calibrated else True
         self._set_axis_labels()
         self.update()
         self._add_scalebar()

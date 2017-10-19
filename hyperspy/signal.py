@@ -1921,11 +1921,18 @@ class BaseSignal(FancySlicing,
             axes.append({'size': int(s), })
         return axes
 
-    def __call__(self, axes_manager=None):
+    def __call__(self, axes_manager=None, calibrated=True):
         if axes_manager is None:
             axes_manager = self.axes_manager
-        return np.atleast_1d(
+        value = np.atleast_1d(
             self.data.__getitem__(axes_manager._getitem_tuple))
+        gain = self.metadata.get_item("Signal.Noise_properties."
+                                      "Variance_linear_model.gain_factor")
+        offset = self.metadata.get_item("Signal.Noise_properties."
+                                        "Variance_linear_model.gain_offset")
+        if gain is not None and offset is not None and calibrated:
+            value = value * gain + offset
+        return value
 
     def plot(self, navigator="auto", axes_manager=None,
              plot_markers=True, **kwargs):
@@ -1963,6 +1970,7 @@ class BaseSignal(FancySlicing,
                 "plotting as a 1D signal, or "
                 "'s.transpose(signal_axes=(1,2)).plot()' "
                 "for plotting as a 2D signal.")
+        self._plot.signal = self
 
         self._plot.axes_manager = axes_manager
         self._plot.signal_data_function = self.__call__
@@ -1970,8 +1978,8 @@ class BaseSignal(FancySlicing,
             self._plot.signal_title = self.metadata.General.title
         elif self.tmp_parameters.has_item('filename'):
             self._plot.signal_title = self.tmp_parameters.filename
-        if self.metadata.has_item("Signal.quantity"):
-            self._plot.quantity_label = self.metadata.Signal.quantity
+#        if self.metadata.has_item("Signal.quantity"):
+#            self._plot.quantity_label = self.metadata.Signal.quantity
 
         def get_static_explorer_wrapper(*args, **kwargs):
             return navigator()
