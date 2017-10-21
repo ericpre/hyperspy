@@ -131,8 +131,8 @@ class Signal1DFigure(BlittedFigure):
                 pass
 
     def set_labels_figure(self):
-        utils.set_signal1d_labels(self.signal, self.ax,
-                                  self._calibrated)
+        utils.set_signal1d_labels(self.signal, self.ax, self._calibrated, 
+                                  ylabel=self.__dict__.get('ylabel'))
 
     def _on_close(self):
         if self.figure is None:
@@ -337,12 +337,9 @@ class Signal1DLine(object):
 
         old_xaxis = self.line.get_xdata()
 
+        xdata = self.axis.axis if calibrated else np.arange(self.axis.high_index + 1)
         if also_xaxis or len(old_xaxis) != self.axis.size or\
                 np.any(np.not_equal(old_xaxis, self.axis.axis)):
-            if calibrated:
-                xdata = self.axis.axis
-            else:
-                xdata = np.arange(self.axis.high_index + 1)
             self.ax.set_xlim(xdata[0], xdata[-1])
             self.line.set_data(xdata, ydata)
         else:
@@ -350,7 +347,7 @@ class Signal1DLine(object):
 
         if self.autoscale is True:
             self.ax.relim()
-            y1, y2 = np.searchsorted(self.axis.axis,
+            y1, y2 = np.searchsorted(xdata,
                                      self.ax.get_xbound())
             y2 += 2
             y1, y2 = np.clip((y1, y2), 0, len(ydata - 1))

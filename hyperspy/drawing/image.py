@@ -159,49 +159,20 @@ class ImagePlot(BlittedFigure):
 
     def configure(self):
         # Calibrate the axes of the navigator image
-        self._compute_extent()
+        self._calculate_extent()
         self._calculate_aspect()
 
-    def _compute_extent(self):
+    def _calculate_extent(self):
         xaxis = self.xaxis
         yaxis = self.yaxis
         if self._calibrated:
-            self._extent = (xaxis.low_index, xaxis.high_index,
-                            yaxis.high_index, yaxis.low_index)
-        else:
             self._extent = (xaxis.axis[0] - xaxis.scale / 2.,
                             xaxis.axis[-1] + xaxis.scale / 2.,
                             yaxis.axis[-1] + yaxis.scale / 2.,
                             yaxis.axis[0] - yaxis.scale / 2.)
-
-    def _set_axis_labels(self):
-        def units_to_display(units):
-            return 'px' if self._calibrated else units
-
-        xaxis = self.xaxis
-        yaxis = self.yaxis
-
-        self._xlabel = '%s' % str(xaxis)
-        if xaxis.units is not Undefined:
-            self._xlabel += ' (%s)' % units_to_display(xaxis.units)
-        self._ylabel = '%s' % str(yaxis)
-        if yaxis.units is not Undefined:
-            self._ylabel += ' (%s)' % units_to_display(yaxis.units)
-
-        if (xaxis.units == yaxis.units) and (xaxis.scale == yaxis.scale):
-            self._auto_scalebar = True
-            self._auto_axes_ticks = False
-            self.pixel_units = units_to_display(xaxis.units)
         else:
-            self._auto_scalebar = False
-            self._auto_axes_ticks = True
-
-        if self.axes_ticks is False:
-            self.ax.set_xticks([])
-            self.ax.set_yticks([])
-
-        self.ax.set_xlabel(self._xlabel)
-        self.ax.set_ylabel(self._ylabel)
+            self._extent = (xaxis.low_index - 0.5, xaxis.high_index + 0.5,
+                            yaxis.high_index + 0.5, yaxis.low_index - 0.5)
 
     def _calculate_aspect(self):
         xaxis = self.xaxis
@@ -218,7 +189,38 @@ class ImagePlot(BlittedFigure):
                 factor = min_asp ** -1 * xaxis.size / yaxis.size
                 self._auto_scalebar = False
                 self._auto_axes_ticks = True
-        self._aspect = np.abs(factor * xaxis.scale / yaxis.scale)
+        if self._calibrated:
+            self._aspect = np.abs(factor * xaxis.scale / yaxis.scale)
+        else:
+            self._aspect = np.abs((self._extent[1] - self._extent[0]) / (
+                self._extent[3] - self._extent[2]))
+
+    def _set_axis_labels(self):
+        xaxis = self.xaxis
+        yaxis = self.yaxis
+
+        self._xlabel = '%s' % str(xaxis)
+        if xaxis.units is not Undefined and self._calibrated:
+            self._xlabel += ' (%s)' % xaxis.units
+        self._ylabel = '%s' % str(yaxis)
+        if yaxis.units is not Undefined and self._calibrated:
+            self._ylabel += ' (%s)' % yaxis.units
+
+        if (xaxis.units == yaxis.units) and (xaxis.scale == yaxis.scale):
+            self._auto_scalebar = True
+            self._auto_axes_ticks = False
+            if self._calibrated:
+                self.pixel_units = xaxis.units
+        else:
+            self._auto_scalebar = False
+            self._auto_axes_ticks = True
+
+        if self.axes_ticks is False:
+            self.ax.set_xticks([])
+            self.ax.set_yticks([])
+
+        self.ax.set_xlabel(self._xlabel)
+        self.ax.set_ylabel(self._ylabel)
 
     def optimize_contrast(self, data):
         if (self._vmin_user is not None and self._vmax_user is not None):
@@ -302,8 +304,9 @@ class ImagePlot(BlittedFigure):
 
     def update(self, **kwargs):
         ims = self.ax.images
-        # update extent:
-        self._compute_extent()
+        # update extent and aspect:
+        self._calculate_extent()
+        self._calculate_aspect()
 
         # Turn on centre_colormap if a diverging colormap is used.
         if self.centre_colormap == "auto":
@@ -363,7 +366,6 @@ class ImagePlot(BlittedFigure):
             self.ax.set_xlim(self._extent[:2])
             self.ax.set_ylim(self._extent[2:])
             ims[0].set_extent(self._extent)
-            self._calculate_aspect()
             self.ax.set_aspect(self._aspect)
             ims[0].norm.vmax, ims[0].norm.vmin = vmax, vmin
             if redraw_colorbar is True:

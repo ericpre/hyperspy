@@ -1926,8 +1926,11 @@ class BaseSignal(FancySlicing,
             axes_manager = self.axes_manager
         value = np.atleast_1d(
             self.data.__getitem__(axes_manager._getitem_tuple))
+        return self._get_value(value, calibrated=calibrated)
+
+    def _get_value(self, value, calibrated=True):
         gain = self.metadata.get_item("Signal.Noise_properties."
-                                      "Variance_linear_model.gain_factor")
+                              "Variance_linear_model.gain_factor")
         offset = self.metadata.get_item("Signal.Noise_properties."
                                         "Variance_linear_model.gain_offset")
         if gain is not None and offset is not None and calibrated:
@@ -1984,12 +1987,13 @@ class BaseSignal(FancySlicing,
         def get_static_explorer_wrapper(*args, **kwargs):
             return navigator()
 
-        def get_1D_sum_explorer_wrapper(*args, **kwargs):
+        def get_1D_sum_explorer_wrapper(axes_manager=None, calibrated=True):
             navigator = self
             # Sum over all but the first navigation axis.
             am = navigator.axes_manager
             navigator = navigator.sum(am.signal_axes + am.navigation_axes[1:])
-            return np.nan_to_num(navigator.data).squeeze()
+            return self._get_value(np.nan_to_num(navigator.data).squeeze(),
+                                   calibrated=calibrated)
 
         def get_dynamic_explorer_wrapper(*args, **kwargs):
             navigator.axes_manager.indices = self.axes_manager.indices[
@@ -1999,6 +2003,13 @@ class BaseSignal(FancySlicing,
                 return np.abs(navigator())
             else:
                 return navigator()
+
+        def get_image_explorer_wrapper(axes_manager=None, calibrated=True):
+            data = self._get_value(self.data, calibrated=calibrated)
+            if np.issubdtype(self.data.dtype, complex):
+                return np.abs(data)
+            else:
+                return data
 
         if not isinstance(navigator, BaseSignal) and navigator == "auto":
             if (self.axes_manager.navigation_dimension == 1 and
@@ -2051,11 +2062,7 @@ class BaseSignal(FancySlicing,
                         "The navigator dimensions are not compatible with "
                         "those of self.")
             elif navigator == "data":
-                if np.issubdtype(self.data.dtype, complex):
-                    self._plot.navigator_data_function = lambda axes_manager=None: np.abs(
-                        self.data)
-                else:
-                    self._plot.navigator_data_function = lambda axes_manager=None: self.data
+                self._plot.navigator_data_function = get_image_explorer_wrapper
             elif navigator == "spectrum":
                 self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             else:
@@ -2353,7 +2360,7 @@ class BaseSignal(FancySlicing,
         >>> spectrum.data[1, 2, 9] = 5
         >>> print(spectrum)
         <EDXTEMSpectrum, title: dimensions: (4, 4|10)>
-        >>> print ('Sum = ', sum(sum(sum(spectrum.data))))
+        >>> print('Sum = ', sum(sum(sum(spectrum.data))))
         Sum = 164.0
         >>> scale = [2, 2, 5]
         >>> test = spectrum.rebin(scale)

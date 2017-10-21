@@ -75,10 +75,9 @@ class MPL_HyperExplorer(object):
         elif len(self.navigator_data_function().shape) == 1:
             # Create the figure
             sf = signal1d.Signal1DFigure(title=title)
-            axis = self.axes_manager.navigation_axes[0]
-            sf.ylabel = r'$\Sigma\mathrm{data\,over\,all\,other\,axes}$'
-            sf.axis = axis
+            sf.axis = self.axes_manager.navigation_axes[0]
             sf.signal = self.signal
+            sf.ylabel = r'$\Sigma\mathrm{data\,over\,all\,other\,axes}$'
             sf.set_labels_figure()
             sf.axes_manager = self.axes_manager
             self.navigator_plot = sf
