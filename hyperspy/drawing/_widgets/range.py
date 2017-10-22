@@ -86,9 +86,14 @@ class RangeWidget(ResizableDraggableWidgetBase):
             self._apply_changes(old_size=old_size, old_position=old_position)
 
     def _get_range(self):
-        p = self._pos[0]
-        w = self._size[0]
-        offset = self.axes[0].scale
+        print('_get_range(), position', self.position[0])
+        p = np.array(self.position[0])
+        w = np.array(self.size[0])
+        print('_get_range(), size:', self.size[0])
+        if not self._calibrated and isinstance(self.position, float):
+            offset = self.axes[0].scale
+        else:
+            offset = 1
         p -= 0.5 * offset
         return (p, p + w)
 
@@ -162,6 +167,8 @@ class RangeWidget(ResizableDraggableWidgetBase):
 
     def _update_patch_geometry(self):
         if self.is_on() and self.span is not None:
+            print('here0', self._calibrated)
+            print('here1', self._get_range())
             self.span.range = self._get_range()
 
     def disconnect(self):

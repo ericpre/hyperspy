@@ -259,7 +259,7 @@ class RectangleWidget(SquareWidget, ResizersMixin):
         value of the pixel. Here, xy corresponds to the top left of the pixel.
         """
         offset = [a.scale for a in self.axes]
-        return self._pos - 0.5 * np.array(offset)
+        return np.array(self.position) - 0.5 * np.array(offset)
 
     def _update_patch_position(self):
         # Override to include resizer positioning

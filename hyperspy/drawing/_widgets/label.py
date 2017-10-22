@@ -81,8 +81,8 @@ class LabelWidget(Widget1DBase):
 
     def _update_patch_position(self):
         if self.is_on() and self.patch:
-            self.patch[0].set_x(self._pos[0])
-            self.patch[0].set_y(self._pos[1])
+            self.patch[0].set_x(self.position[0])
+            self.patch[0].set_y(self.position[1])
             self.draw_patch()
 
     def _update_patch_string(self):
