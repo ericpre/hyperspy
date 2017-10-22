@@ -8,6 +8,7 @@ class BlittedFigure(object):
 
     def __init__(self):
         self._background = None
+        self._widget_list = list()
         self.events = Events()
         self.events.closed = Event("""
             Event that triggers when the figure window is closed.
@@ -57,6 +58,9 @@ class BlittedFigure(object):
                     pass
             if canvas.supports_blit:
                 canvas.blit(self.figure.bbox)
+
+    def add_widget(self, widget):
+        self._widget_list.append(widget)
 
     def add_marker(self, marker):
         marker.ax = self.ax

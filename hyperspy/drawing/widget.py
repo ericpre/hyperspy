@@ -82,6 +82,7 @@ class WidgetBase(object):
                     The widget that closed
             """, arguments=['obj'])
         self._navigating = False
+        self._calibrated = True
         super(WidgetBase, self).__init__(**kwargs)
 
     def _get_axes(self):
@@ -320,10 +321,7 @@ class DraggableWidgetBase(WidgetBase):
     def _get_indices(self):
         """Returns a tuple with the position (indices).
         """
-        idx = []
-        for i in range(len(self.axes)):
-            idx.append(self.axes[i].value2index(self._pos[i]))
-        return tuple(idx)
+        return tuple([self._v2i(axis, v) for axis, v in zip(self.axes, self._pos)])
 
     def _set_indices(self, value):
         """Sets the position of the widget (by indices). The dimensions should
@@ -336,10 +334,8 @@ class DraggableWidgetBase(WidgetBase):
         elif len(self.axes) != len(value):
             raise ValueError()
         else:
-            p = []
-            for i in range(len(self.axes)):
-                p.append(self.axes[i].index2value(value[i]))
-            self.position = p
+            self.position = [self._i2v(axis, v)
+                             for axis, v in zip(self.axes, value)]
 
     indices = property(lambda s: s._get_indices(),
                        lambda s, v: s._set_indices(v))
@@ -376,8 +372,10 @@ class DraggableWidgetBase(WidgetBase):
     def _get_position(self):
         """Providies the position of the widget (by values) in a tuple.
         """
-        return tuple(
-            self._pos.tolist())  # Don't pass reference, and make it clear
+        if self._calibrated:
+            return tuple(self._pos.tolist())  # Don't pass reference
+        else:
+            return self._get_indices()
 
     def _set_position(self, position):
         """Sets the position of the widget (by values). The dimensions should
@@ -385,6 +383,12 @@ class DraggableWidgetBase(WidgetBase):
         value has changed, which is then responsible for triggering any
         relevant events.
         """
+        if not self._calibrated and isinstance(position, int):
+            for axis, v in zip(self.axes, position):
+                print(axis, v)
+                print(axis, v, self._i2v(axis, v))
+            position = [self._i2v(axis, v)
+                        for axis, v in zip(self.axes, position)]
         position = self._validate_pos(position)
         if np.any(self._pos != position):
             self._pos = np.array(position)
@@ -545,12 +549,17 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
         """Getter for 'size' property. Returns the size as a tuple (to prevent
         unintended in-place changes).
         """
-        return tuple(self._size.tolist())
+        if self._calibrated:
+            return tuple(self._size.tolist())
+        else:
+            return tuple(self.get_size_in_indices().tolist())
 
     def _set_size(self, value):
         """Setter for the 'size' property. Calls _size_changed to handle size
         change, if the value has changed.
         """
+        if not self._calibrated and isinstance(value, int):
+            value = [self._i2v(axis, v) for axis, v in zip(self.axes, value)]
         value = np.minimum(value, [ax.size * ax.scale for ax in self.axes])
         value = np.maximum(value,
                            self.size_step * [ax.scale for ax in self.axes])
@@ -750,7 +759,7 @@ class Widget2DBase(ResizableDraggableWidgetBase):
         """Returns the xy position of the widget. In this default
         implementation, the widget is centered on the position.
         """
-        return self._pos - self._size / 2.
+        return np.array(self.position) - np.array(self.size) / 2
 
     def _get_patch_bounds(self):
         """Returns the bounds of the patch in the form of a tuple in the order

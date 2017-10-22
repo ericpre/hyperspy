@@ -252,13 +252,13 @@ def _get_mpl_ax(plot, axes):
             The axes to infer from.
     """
     if axes[0].navigate:
-        ax = plot.navigator_plot.ax
+        fig = plot.navigator_plot
     else:
         if len(axes) == 2 and axes[1].navigate:
-            ax = plot.navigator_plot.ax
+            fig = plot.navigator_plot
         else:
-            ax = plot.signal_plot.ax
-    return ax
+            fig = plot.signal_plot
+    return fig.ax, fig
 
 
 class BaseInteractiveROI(BaseROI):
@@ -443,8 +443,9 @@ class BaseInteractiveROI(BaseROI):
                     "calling this method using its `plot` method." %
                     repr(signal))
 
-            ax = _get_mpl_ax(signal._plot, axes)
+            ax, fig = _get_mpl_ax(signal._plot, axes)
             widget.set_mpl_ax(ax)
+            fig.add_widget(widget)
 
         # Connect widget changes to on_widget_change
         widget.events.changed.connect(self._on_widget_change,

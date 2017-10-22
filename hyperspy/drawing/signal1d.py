@@ -156,6 +156,9 @@ class Signal1DFigure(BlittedFigure):
         self.signal._calibrated = self._calibrated
         self.set_labels_figure()
         self.update(also_xaxis=True)
+        for widget in self._widget_list:
+            widget._calibrated = self._calibrated
+            widget._update_patch_geometry()
 
 
 class Signal1DLine(object):

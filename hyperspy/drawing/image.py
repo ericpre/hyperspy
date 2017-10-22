@@ -439,6 +439,9 @@ class ImagePlot(BlittedFigure):
         self._set_axis_labels()
         self.update()
         self._add_scalebar()
+        for widget in self._widget_list:
+            widget._calibrated = self._calibrated
+            widget._update_patch_geometry()
         self.figure.canvas.draw()
 
     def set_contrast(self, vmin, vmax):

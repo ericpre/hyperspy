@@ -91,6 +91,7 @@ class MPL_HyperExplorer(object):
             sf.add_line(sl)
             sf.plot()
             self.pointer.set_mpl_ax(sf.ax)
+            sf.add_widget(self.pointer)
             if self.axes_manager.navigation_dimension > 1:
                 self._get_navigation_sliders()
                 for axis in self.axes_manager.navigation_axes[:-2]:
@@ -111,6 +112,7 @@ class MPL_HyperExplorer(object):
             imf.vmax = vmax
             imf.no_nans = no_nans
             imf.centre_colormap = centre_colormap
+            imf.add_widget(self.pointer)
             # Navigator labels
             if self.axes_manager.navigation_dimension == 1:
                 imf.yaxis = self.axes_manager.navigation_axes[0]
