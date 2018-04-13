@@ -94,6 +94,11 @@ artifacts:
   - path: dist\*.whl
     name: win_wheels
 
+on_failure:
+  - ps: $Env:image_comparison_filename = 'image_comparison_' + $Env:PYTHON_VERSION + '_' + $Env:PYTHON_ARCH + 'bits.zip'
+  - ps: 7z a -r $Env:image_comparison_filename C:\Users\appveyor\AppData\Local\Temp\1\*png
+  - ps: Push-AppveyorArtifact $Env:image_comparison_filename
+
   #Auto-deployment of bundle installer for tags:
 before_deploy:
   - ps: Add-AppveyorMessage "Running deployment step..."
@@ -134,7 +139,7 @@ before_deploy:
   - "%CMD_IN_ENV% pip install .[all]"
 
   # Try to run twice as workaround for permission error
-  - "%CMD_IN_ENV% pip install hyperspyui || pip install hyperspyui"
+  - "%CMD_IN_ENV% pip install https://github.com/hyperspy/hyperspyUI/archive/master.zip || pip install https://github.com/hyperspy/hyperspyUI/archive/master.zip"
   # setting back the config:
   - "ren %WP_INSTDIR%\\settings\\pydistutils_bak.cfg pydistutils.cfg"
   # Custom installer step
@@ -153,13 +158,13 @@ deploy:
   provider: GitHub
   auth_token:
     #   to266:
-    secure: ptV5Dkz3pSVdjD0qRDpxJgjVlddFtleZ+B+c2X1Fg67P8OX3bHWVktRmlj6hfLhM
+    #secure: ptV5Dkz3pSVdjD0qRDpxJgjVlddFtleZ+B+c2X1Fg67P8OX3bHWVktRmlj6hfLhM
     #   vidartf:
     #secure: KwAfARhGEqOnZHltPB6kKu8xmnoiGSk7NMYJBIEbWvFCuVnepoPV7ZcIjUN3pUpK
     #   sem-geologist:
     #secure: RRqUkx9H5VuFNITmm+YzgB0qnqgVGPH1yrPVxb4oCD+FAjcTch2WZAiPEKn4L6w6
     #   ericpre:
-    #secure: ae8XsPI+vKJI9AWm0r9+ec71CIkXcnCHlNIQ57v+87hh5k1xuAAxIOi1CFKEmmZv
+    secure: ae8XsPI+vKJI9AWm0r9+ec71CIkXcnCHlNIQ57v+87hh5k1xuAAxIOi1CFKEmmZv
   artifact: /.*\.exe/, win_wheels  # upload all exe installers and wheels to release assets
   draft: false
   prerelease: false
