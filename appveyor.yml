@@ -105,17 +105,17 @@ on_failure:
 before_deploy:
   - ps: Add-AppveyorMessage "Running deployment step..."
   - "pip install winpython"
-  - "pip install https://github.com/hyperspy/hyperspy-bundle/archive/master.zip"
+  - "pip install https://github.com/ericpre/hyperspy-bundle/archive/fix_for_last_winpython.zip"
   # Download WinPython installer if not cached
   - ps: Add-AppveyorMessage "Installing WinPython..."
-  - "SET WP_INSTDIR=%APPDATA%\\wpdir\\WinPython-%PYTHON_ARCH%bit\\"
-  - "SET WP_EXE=%APPDATA%/wpdir/WinPython%PYTHON_MAJOR%-%PYTHON_ARCH%bit.exe"
-  - "mkdir %APPDATA%\\wpdir"
+  - "SET WP_INSTDIR=%USERPROFILE%\\wpdir\\WP-%PYTHON_ARCH%\\"
+  - "SET WP_EXE=%USERPROFILE%/wpdir/WinPython%PYTHON_MAJOR%-%PYTHON_ARCH%bit.exe"
+  - "mkdir %USERPROFILE%\\wpdir"
   - ps: appveyor DownloadFile $Env:WP_URL -FileName $Env:WP_EXE
   - ps: Write-Output (Get-FileHash $Env:WP_EXE)
   - ps: if ((Get-FileHash $Env:WP_EXE).Hash -ne $Env:WP_CRC) { exit(1) }
   - ps: (& $Env:WP_EXE /S /D=$Env:WP_INSTDIR | Out-Null )
-  - "ls %APPDATA%/wpdir"
+  - "ls %USERPROFILE%/wpdir"
   - "ls %WP_INSTDIR%"
   - "ren %WP_INSTDIR%\\settings\\pydistutils.cfg pydistutils_bak.cfg"
   # we rename pydistutils temporaly to enable use of msvc
@@ -146,7 +146,7 @@ before_deploy:
   - "ren %WP_INSTDIR%\\settings\\pydistutils_bak.cfg pydistutils.cfg"
   # Custom installer step
   - ps: Add-AppveyorMessage "Creating installer..."
-  - "%PYTHON%/python.exe -m hspy_bundle.configure_installer %APPDATA%/wpdir %PYTHON_ARCH% %APPVEYOR_REPO_TAG_NAME%"
+  - "%PYTHON%/python.exe -m hspy_bundle.configure_installer %USERPROFILE%/wpdir %PYTHON_ARCH% %APPVEYOR_REPO_TAG_NAME%"
   - "\"%NSIS_DIR%/makensis.exe\" /V3 NSIS_installer_script-%PYTHON_ARCH%bit.nsi"
   - ps: Add-AppveyorMessage "Installer created! Re-run tests in Winpython environment..."
   # Re-run tests in WinPython environment
