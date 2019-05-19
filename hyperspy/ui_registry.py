@@ -123,7 +123,7 @@ def get_gui(self, toolkey, display=True, toolkit=None, **kwargs):
                           else "them")
             raise ValueError(
                 "No toolkit available. The {} {} installed but "
-                "disabled in `preferences`. Enable them in `preferences` or "
+                "disabled in `preferences`. Enable {} in `preferences` or "
                 "manually select a toolkit with the `toolkit` argument.".format(
                     _toolkits_to_string(available_disabled_toolkits),
                     is_or_are, them_or_it)
@@ -174,15 +174,17 @@ def get_partial_gui(toolkey):
                        toolkit=toolkit, **kwargs)
     return pg
 
-DISPLAY_DT = """display: bool
-    If True, display the user interface widgets. If False, return the widgets
-    container in a dictionary, usually for customisation or testing."""
 
-TOOLKIT_DT = """toolkit: str, iterable of strings or None
-    If None (default), all available widgets are displayed or returned. If
-    string, only the widgets of the selected toolkit are displayed if available.
-    If an interable of toolkit strings, the widgets of all listed toolkits are
-    displayed or returned."""
+DISPLAY_DT = """display : bool
+            If True, display the user interface widgets. If False, return the 
+            widgets container in a dictionary, usually for customisation or 
+            testing."""
+
+TOOLKIT_DT = """toolkit : str, iterable of strings or None
+            If None (default), all available widgets are displayed or returned. 
+            If string, only the widgets of the selected toolkit are displayed 
+            if available. If an interable of toolkit strings, the widgets of 
+            all listed toolkits are displayed or returned."""
 GUI_DT = """Display or return interactive GUI element if available.
 
 Parameters

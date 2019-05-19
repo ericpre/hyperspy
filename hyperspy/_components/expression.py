@@ -1,5 +1,27 @@
+# -*- coding: utf-8 -*-
+# Copyright 2007-2016 The HyperSpy developers
+#
+# This file is part of  HyperSpy.
+#
+#  HyperSpy is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+#  HyperSpy is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
+
 from functools import wraps
+import numpy as np
+
 from hyperspy.component import Component
+from hyperspy.docstrings.parameters import FUNCTION_ND_DOCSTRING
+
 
 _CLASS_DOC = \
     """%s component (created with Expression).
@@ -27,14 +49,15 @@ def _fill_function_args_2d(fn):
     return fn_wrapped
 
 
-def _parse_substitutions(string, simultaneous=True):
+def _parse_substitutions(string):
     import sympy
     splits = map(str.strip, string.split(';'))
     expr = sympy.sympify(next(splits))
     # We substitute one by one manually, as passing all at the same time does
     # not work as we want (subsitutions inside other substitutions do not work)
     for sub in splits:
-        expr = expr.subs(*tuple(map(str.strip, sub.split('='))))
+        t = tuple(map(str.strip, sub.split('=')))
+        expr = expr.subs(t[0], sympy.sympify(t[1]))
     return expr
 
 
@@ -45,7 +68,7 @@ class Expression(Component):
 
     def __init__(self, expression, name, position=None, module="numpy",
                  autodoc=True, add_rotation=False, rotation_center=None,
-                 **kwargs):
+                 rename_pars={}, **kwargs):
         """Create a component from a string expression.
 
         It automatically generates the partial derivatives and the
@@ -79,6 +102,12 @@ class Expression(Component):
             is not defined, otherwise the center is the coordinates specified
             by `position`. Alternatively a tuple with the (x, y) coordinates
             of the center can be provided.
+        rename_pars: dictionary
+            The desired name of a parameter may sometimes coincide with e.g.
+            the name of a scientific function, what prevents using it in the
+            `expression`. `rename_parameters` is a dictionary to map the name
+            of the parameter in the `expression`` to the desired name of the
+            parameter in the `Component`. For example: {"_gamma": "gamma"}.
         **kwargs
              Keyword arguments can be used to initialise the value of the
              parameters.
@@ -117,19 +146,26 @@ class Expression(Component):
         import sympy
         self._add_rotation = add_rotation
         self._str_expression = expression
+        self._rename_pars = rename_pars
         if rotation_center is None:
             self.compile_function(module=module, position=position)
         else:
             self.compile_function(module=module, position=rotation_center)
         # Initialise component
         Component.__init__(self, self._parameter_strings)
-        self._whitelist['expression'] = ('init', expression)
-        self._whitelist['name'] = ('init', name)
-        self._whitelist['position'] = ('init', position)
+        # When creating components using Expression (for example GaussianHF)
+        # we shouldn't add anything else to the _whitelist as the
+        # component should be initizialized with its own kwargs.
+        # An exception is "module"
         self._whitelist['module'] = ('init', module)
-        if self._is2D:
-            self._whitelist['add_rotation'] = ('init', self._add_rotation)
-            self._whitelist['rotation_center'] = ('init', rotation_center)
+        if self.__class__ is Expression:
+            self._whitelist['expression'] = ('init', expression)
+            self._whitelist['name'] = ('init', name)
+            self._whitelist['position'] = ('init', position)
+            self._whitelist['rename_pars'] = ('init', rename_pars)
+            if self._is2D:
+                self._whitelist['add_rotation'] = ('init', self._add_rotation)
+                self._whitelist['rotation_center'] = ('init', rotation_center)
         self.name = name
         # Set the position parameter
         if position:
@@ -188,17 +224,20 @@ class Expression(Component):
                            modules=module, dummify=False)
 
         if self._is2D:
-            f = lambda x, y: self._f(x, y, *[p.value for p in self.parameters])
+            def f(x, y): return self._f(
+                x, y, *[p.value for p in self.parameters])
         else:
-            f = lambda x: self._f(x, *[p.value for p in self.parameters])
+            def f(x): return self._f(x, *[p.value for p in self.parameters])
         setattr(self, "function", f)
-        parnames = [symbol.name for symbol in parameters]
+        parnames = [symbol.name if symbol.name not in self._rename_pars else self._rename_pars[symbol.name]
+                    for symbol in parameters]
         self._parameter_strings = parnames
         ffargs = _fill_function_args_2d if self._is2D else _fill_function_args
         for parameter in parameters:
             grad_expr = sympy.diff(eval_expr, parameter)
+            name = parameter.name if parameter.name not in self._rename_pars else self._rename_pars[parameter.name]
             setattr(self,
-                    "_f_grad_%s" % parameter.name,
+                    "_f_grad_%s" % name,
                     lambdify(variables + parameters,
                              grad_expr.evalf(),
                              modules=module,
@@ -206,12 +245,42 @@ class Expression(Component):
                     )
 
             setattr(self,
-                    "grad_%s" % parameter.name,
+                    "grad_%s" % name,
                     ffargs(
                         getattr(
                             self,
                             "_f_grad_%s" %
-                            parameter.name)).__get__(
+                            name)).__get__(
                         self,
                         Expression)
                     )
+
+    def _is_navigation_multidimensional(self):
+        if (self._axes_manager is None or not
+                self._axes_manager.navigation_dimension):
+            return False
+        else:
+            return True
+
+    def function_nd(self, *args):
+        """%s
+
+        """
+        if self._is2D:
+            x, y = args[0], args[1]
+            # navigation dimension is 0, f_nd same as f
+            if not self._is_navigation_multidimensional():
+                return self.function(x, y)
+            else:
+                return self._f(x[np.newaxis, ...], y[np.newaxis, ...],
+                               *[p.map['values'][..., np.newaxis, np.newaxis]
+                                 for p in self.parameters])
+        else:
+            x = args[0]
+            if not self._is_navigation_multidimensional():
+                return self.function(x)
+            else:
+                return self._f(x[np.newaxis, ...],
+                               *[p.map['values'][..., np.newaxis]
+                                 for p in self.parameters])
+    function_nd.__doc__ %= FUNCTION_ND_DOCSTRING
