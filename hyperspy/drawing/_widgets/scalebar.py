@@ -24,8 +24,8 @@ from hyperspy.drawing.widgets import Widget2DBase
 
 class ScaleBar(Widget2DBase):
 
-    def __init__(self, axes_manager, units, pixel_size=None, color='white', 
-                 frameon=True, location=3, length_fraction=None, 
+    def __init__(self, axes_manager, units, pixel_size=None, color='black', 
+                 frameon=True, alpha=0.75, location=3, length_fraction=None, 
                  label_loc='top', animated=False):
         """Add a scale bar to an image.
 
@@ -45,8 +45,8 @@ class ScaleBar(Widget2DBase):
         self.axes_manager = axes_manager
         self.units = units
         self.pixel_size = pixel_size
-        self.color = color
         self.frameon = frameon
+        self.alpha = alpha
         self.location = location
         self.length_fraction = length_fraction
         self.label_loc = label_loc
@@ -68,6 +68,8 @@ class ScaleBar(Widget2DBase):
                 length_fraction=self.length_fraction,
                 location= self.location,
                 frameon=self.frameon,
+                color=self.color,
+                box_alpha=self.alpha,
                 label_loc=self.label_loc,
                 use_blit=self.animated)]
         ax.add_artist(self.patch[0])

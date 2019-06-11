@@ -89,7 +89,7 @@ class ImagePlot(BlittedFigure):
         self.min_aspect = 0.1
         self.saturated_pixels = 0.2
         self.ax_markers = list()
-        self.scalebar_color = "white"
+        self.scalebar_color = "black"
         self._user_scalebar = None
         self._auto_scalebar = False
         self._user_axes_ticks = None
