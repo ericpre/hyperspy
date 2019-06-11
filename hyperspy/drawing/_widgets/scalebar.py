@@ -16,132 +16,58 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
+import traits.api as t
+from matplotlib_scalebar.scalebar import ScaleBar as _ScaleBar
 
-from hyperspy.misc.math_tools import closest_nice_number
+from hyperspy.drawing.widgets import Widget2DBase
 
 
-class ScaleBar(object):
+class ScaleBar(Widget2DBase):
 
-    def __init__(self, ax, units, pixel_size=None, color='white',
-                 position=None, max_size_ratio=0.25, lw=2, length=None,
-                 animated=False):
+    def __init__(self, axes_manager, units, pixel_size=None, color='white', 
+                 frameon=True, location=3, length_fraction=None, 
+                 label_loc='top', animated=False):
         """Add a scale bar to an image.
 
         Parameteres
         -----------
-        ax : matplotlib axes
-            The axes where to draw the scale bar.
+        axes_manager
+            The axes manager of the signal.
         units : string
-        pixel_size : {None, float}
-            If None the axes of the image are supposed to be calibrated.
-            Otherwise the pixel size must be specified.
-        color : a valid matplotlib color
-        position {None, (float, float)}
-            If None the position is automatically determined.
-        max_size_ratio : float
-            The maximum size of the scale bar in respect to the
-            length of the x axis
-        lw : int
-            The line width
-        length : {None, float}
-            If None the length is automatically calculated using the
-            max_size_ratio.
+            The units of the pixel.
+        pixel_size : float
+            The size of the pixel.
+        color : a valid matplotlib color.
 
         """
+        super().__init__(axes_manager, color=color)
 
-        self.animated = animated
-        self.ax = ax
+        self.axes_manager = axes_manager
         self.units = units
         self.pixel_size = pixel_size
-        self.xmin, self.xmax = ax.get_xlim()
-        self.ymin, self.ymax = ax.get_ylim()
-        self.text = None
-        self.line = None
-        self.tex_bold = False
-        if length is None:
-            self.calculate_size(max_size_ratio=max_size_ratio)
-        else:
-            self.length = length
-        if position is None:
-            self.position = self.calculate_line_position()
-        else:
-            self.position = position
-        self.calculate_text_position()
-        self.plot_scale(line_width=lw)
-        self.set_color(color)
+        self.color = color
+        self.frameon = frameon
+        self.location = location
+        self.length_fraction = length_fraction
+        self.label_loc = label_loc
+        self.animated = animated
 
-    def get_units_string(self):
-        if self.tex_bold is True:
-            if (self.units[0] and self.units[-1]) == '$':
-                return r'$\mathbf{%g\,%s}$' % \
-                    (self.length, self.units[1:-1])
-            else:
-                return r'$\mathbf{%g\,}$\textbf{%s}' % \
-                    (self.length, self.units)
-        else:
-            return r'$%g\,$%s' % (self.length, self.units)
+        # TODO: improve this adding support for more units in matplotlib-scalebar 
+        self.dimension = 'si-length'
+        if self.units == t.Undefined:
+            self.units = "px"
+            self.dimension = "pixel-length"
 
-    def calculate_line_position(self, pad=0.05):
-        return ((1 - pad) * self.xmin + pad * self.xmax,
-                (1 - pad) * self.ymin + pad * self.ymax)
-
-    def calculate_text_position(self, pad=1 / 100.):
-        ps = self.pixel_size if self.pixel_size is not None else 1
-        x1, y1 = self.position
-        x2, y2 = x1 + self.length / ps, y1
-
-        self.text_position = ((x1 + x2) / 2.,
-                              y2 + (self.ymax - self.ymin) / ps * pad)
-
-    def calculate_size(self, max_size_ratio=0.25):
-        ps = self.pixel_size if self.pixel_size is not None else 1
-        size = closest_nice_number(ps * (self.xmax - self.xmin) *
-                                   max_size_ratio)
-        self.length = size
-
-    def remove(self):
-        if self.line is not None:
-            self.ax.lines.remove(self.line)
-        if self.text is not None:
-            self.ax.texts.remove(self.text)
-
-    def plot_scale(self, line_width=1):
-        self.remove()
-        ps = self.pixel_size if self.pixel_size is not None else 1
-        x1, y1 = self.position
-        x2, y2 = x1 + self.length / ps, y1
-        self.line, = self.ax.plot([x1, x2], [y1, y2],
-                                  linestyle='-',
-                                  lw=line_width,
-                                  animated=self.animated)
-        self.text = self.ax.text(*self.text_position,
-                                 s=self.get_units_string(),
-                                 ha='center',
-                                 size='medium',
-                                 animated=self.animated)
-        self.ax.set_xlim(self.xmin, self.xmax)
-        self.ax.set_ylim(self.ymin, self.ymax)
-        self.ax.figure.canvas.draw_idle()
-
-    def _set_position(self, x, y):
-        self.position = x, y
-        self.calculate_text_position()
-        self.plot_scale(line_width=self.line.get_linewidth())
-
-    def set_color(self, c):
-        self.line.set_color(c)
-        self.text.set_color(c)
-        self.ax.figure.canvas.draw_idle()
-
-    def set_length(self, length):
-        color = self.line.get_color()
-        self.length = length
-        self.calculate_scale_size()
-        self.calculate_text_position()
-        self.plot_scale(line_width=self.line.get_linewidth())
-        self.set_color(color)
-
-    def set_tex_bold(self):
-        self.tex_bold = True
-        self.text.set_text(self.get_units_string())
-        self.ax.figure.canvas.draw_idle()
+    def _add_patch_to(self, ax):
+        """Create and add the matplotlib patches to 'ax'
+        """
+        self.patch = [_ScaleBar(
+                dx=self.pixel_size,
+                units=self.units,
+                dimension=self.dimension,
+                length_fraction=self.length_fraction,
+                location= self.location,
+                frameon=self.frameon,
+                label_loc=self.label_loc,
+                use_blit=self.animated)]
+        ax.add_artist(self.patch[0])

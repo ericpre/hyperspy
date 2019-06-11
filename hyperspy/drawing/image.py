@@ -192,7 +192,6 @@ class ImagePlot(BlittedFigure):
                 self._auto_scalebar = False
                 self._auto_axes_ticks = True
         self._aspect = np.abs(factor * xaxis.scale / yaxis.scale)
-        # print(self._aspect)
 
     def optimize_contrast(self, data):
         if (self._vmin_user is not None and self._vmax_user is not None):
@@ -282,11 +281,13 @@ class ImagePlot(BlittedFigure):
         if self.scalebar is True:
             if self.pixel_units is not None:
                 self.ax.scalebar = widgets.ScaleBar(
-                    ax=self.ax,
+                    axes_manager=self.axes_manager,
                     units=self.pixel_units,
+                    pixel_size=self.xaxis.scale,
                     animated=self.figure.canvas.supports_blit,
                     color=self.scalebar_color,
                 )
+                self.ax.scalebar.set_mpl_ax(self.ax)
 
         if self.colorbar:
             self._add_colorbar()
