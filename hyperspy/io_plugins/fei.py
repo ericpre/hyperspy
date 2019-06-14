@@ -30,6 +30,8 @@ import traits.api as t
 
 from hyperspy.misc.array_tools import sarray2dict
 from hyperspy.misc.utils import DictionaryTreeBrowser, multiply
+from hyperspy.misc.io.tools import convert_xml_to_dict
+
 
 _logger = logging.getLogger(__name__)
 
@@ -459,12 +461,6 @@ def get_axes_from_position(header, data):
             'index_in_array': 0
         })
     return array_shape, axes
-
-
-def convert_xml_to_dict(xml_object):
-    op = DictionaryTreeBrowser()
-    emixml2dtb(ET.fromstring(xml_object), op)
-    return op
 
 
 def ser_reader(filename, objects=None, lazy=False, only_valid_data=False):
