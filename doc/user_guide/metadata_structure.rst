@@ -50,17 +50,57 @@ in the following sections of this chapter.
     │       │   │   ├── energy_resolution_MnKa (eV)
     │       │   │   ├── live_time (s)
     │       │   │   └── real_time (s)
-    │       │   └── EELS
-    │       │       ├── aperture (mm)
-    │       │       ├── collection_angle (mrad)
-    │       │       ├── dwell_time (s)
-    │       │       ├── exposure (s)
-    │       │       ├── frame_number
-    │       │       └── spectrometer
+    │       │   ├── EELS
+    │       │   │   ├── aperture (mm)
+    │       │   │   ├── collection_angle (mrad)
+    │       │   │   ├── dwell_time (s)
+    │       │   │   ├── exposure (s)
+    │       │   │   ├── frame_number
+    │       │   │   └── spectrometer
+    │       │   ├── Camera
+    │       │   │   ├── Binning
+    │       │   │   │   ├── height
+    │       │   │   │   └── width
+    │       │   │   ├── Read_out_area
+    │       │   │   │   ├── bottom
+    │       │   │   │   ├── left
+    │       │   │   │   ├── right
+    │       │   │   │   └── top
+    │       │   │   ├── frame_number
+    │       │   │   └── exposure (s)
+    │       │   ├── Scanning
+    │       │   │   ├── Collection_angle
+    │       │   │   │   ├── start (mrad)
+    │       │   │   │   └── end (mrad)
+    │       │   │   └── type
     │       ├── Biprism
     │       │   ├── azimuth_angle (º)
     │       │   ├── position
     │       │   └── voltage (V)
+    │       ├── Source
+    │       │   ├── type
+    │       │   └── extraction (V)
+    │       ├── Optics
+    │       │   ├── C0
+    │       │   ├── C1
+    │       │   ├── C2
+    │       │   ├── C3
+    │       │   ├── C4
+    │       │   ├── Objective
+    │       │   ├── Lorentz
+    │       │   ├── P1
+    │       │   ├── P2
+    │       │   ├── P3
+    │       │   └── P4
+    │       ├── Apertures
+    │       │       ├── Aperture_name1
+    │       │       │      ├── type
+    │       │       │      ├── size (um)
+    │       │       │      └── position (mm)
+    │       │       └── Aperture_name2
+    │       │              ├── type
+    │       │              ├── size (um)
+    │       │              └── position (mm)
     │       ├── acquisition_mode
     │       ├── beam_current (nA)
     │       ├── beam_energy (keV)
@@ -68,6 +108,7 @@ in the following sections of this chapter.
     │       ├── camera_length (mm)
     │       ├── convergence_angle (mrad)
     │       ├── magnification
+    │       ├── defocus (nm)
     │       ├── microscope
     │       └── Stage
     │           ├── rotation (º)

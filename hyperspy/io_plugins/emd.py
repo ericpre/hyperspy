@@ -521,11 +521,17 @@ def _parse_metadata(data_group, sub_group_key):
 
 
 def _get_detector_metadata_dict(om, detector_name):
-    detectors_dict = om['Detectors']
-    # find detector dict from the detector_name
-    for key in detectors_dict:
-        if detectors_dict[key]['DetectorName'] == detector_name:
-            return detectors_dict[key]
+    # if the `BinaryResult/Detector` is not available, there should be only
+    # one detector in `Detectors`:
+    # e.g. original_metadata['Detectors']['Detector-0']
+    if 'BinaryResult' in om.keys():
+        detector_index = om['BinaryResult'].get('DetectorIndex')
+    else:
+        detector_index = 0
+    if detector_index is not None:
+        detectors_dict = om['Detectors']
+        key = 'Detector-{}'.format(detector_index)
+        return detectors_dict[key]
 
 
 class FeiEMDReader(object):
@@ -642,10 +648,6 @@ class FeiEMDReader(object):
                                             spectrum_sub_group_key)
         original_metadata.update(self.original_metadata)
 
-        # Can be used in more recent version of velox emd files
-        self.detector_information = self._get_detector_information(
-                original_metadata)
-
         dispersion, offset, unit = self._get_dispersion_offset(
             original_metadata)
         axes = []
@@ -703,9 +705,6 @@ class FeiEMDReader(object):
         original_metadata = _parse_metadata(image_group, image_sub_group_key)
         original_metadata.update(self.original_metadata)
 
-        # Can be used in more recent version of velox emd files
-        self.detector_information = self._get_detector_information(
-                original_metadata)
         self.detector_name = self._get_detector_name(image_sub_group_key)
 
         read_stack = (self.load_SI_image_stack or self.im_type == 'Image')
@@ -782,8 +781,7 @@ class FeiEMDReader(object):
 
         md = self._get_metadata_dict(original_metadata)
         md['Signal']['signal_type'] = 'image'
-        if self.detector_name is not None:
-            original_metadata['DetectorMetadata'] = _get_detector_metadata_dict(
+        original_metadata['DetectorMetadata'] = _get_detector_metadata_dict(
                 original_metadata,
                 self.detector_name)
         if hasattr(self, 'map_label_dict'):
@@ -829,17 +827,6 @@ class FeiEMDReader(object):
                         if metadata[1]['enableFilter'] == 'true':
                             detector_name = "Filtered {}".format(detector_name)
                         return detector_name
-
-    def _get_detector_information(self, om):
-        # if the `BinaryResult/Detector` is not available, there should be only
-        # one detector in `Detectors`:
-        # e.g. original_metadata['Detectors']['Detector-0']
-        if 'BinaryResult' in om.keys():
-            detector_index = om['BinaryResult'].get('DetectorIndex')
-        else:
-            detector_index = 0
-        if detector_index is not None:
-            return om['Detectors']['Detector-{}'.format(detector_index)]
 
     def _parse_frame_time(self, original_metadata, factor=1):
         try:
@@ -952,10 +939,6 @@ class FeiEMDReader(object):
         spectrum_image_shape = streams[0].shape
         original_metadata = streams[0].original_metadata
         original_metadata.update(self.original_metadata)
-
-        # Can be used in more recent version of velox emd files
-        self.detector_information = self._get_detector_information(
-                original_metadata)
 
         pixel_size, offsets, original_units = \
             streams[0].get_pixelsize_offset_unit()
@@ -1077,15 +1060,62 @@ class FeiEMDReader(object):
                      parse_individual_EDS_detector_metadata=True):
         mapping = {
             'Acquisition.AcquisitionStartDatetime.DateTime': (
-                "General.time_zone", lambda x: self._get_local_time_zone()),
+                "General.time_zone",
+                lambda x: self._get_local_time_zone()),
             'Optics.AccelerationVoltage': (
-                "Acquisition_instrument.TEM.beam_energy", lambda x: float(x) / 1e3),
+                "Acquisition_instrument.TEM.beam_energy",
+                lambda x: float(x) / 1e3),
             'Optics.CameraLength': (
-                "Acquisition_instrument.TEM.camera_length", lambda x: float(x) * 1e3),
+                "Acquisition_instrument.TEM.camera_length",
+                lambda x: float(x) * 1e3),
             'CustomProperties.StemMagnification.value': (
-                "Acquisition_instrument.TEM.magnification", lambda x: float(x)),
+                "Acquisition_instrument.TEM.magnification",
+                lambda x: float(x)),
+            'Optics.BeamConvergence': (
+                "Acquisition_instrument.TEM.convergence_angle",
+                lambda x: round(float(x)*1E3, 2)),
+            'Optics.GunLensSetting': (
+                "Acquisition_instrument.TEM.Optics.c0",
+                lambda x: round(float(x), 2)),
+            'Optics.C1LensIntensity': (
+                "Acquisition_instrument.TEM.Optics.c1",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.C2LensIntensity': (
+                "Acquisition_instrument.TEM.Optics.c2",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.C3LensIntensity': (
+                "Acquisition_instrument.TEM.Optics.c3",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.MiniCondenserLensIntensity': (
+                "Acquisition_instrument.TEM.Optics.c4",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.ObjectiveLensIntensity': (
+                "Acquisition_instrument.TEM.Optics.objective",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.LorentzLensIntensity': (
+                "Acquisition_instrument.TEM.Optics.lorentz",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.DiffractionLensIntensity': (
+                "Acquisition_instrument.TEM.Optics.p1",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.IntermediateLensIntensity': (
+                "Acquisition_instrument.TEM.Optics.p2",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.Projector1LensIntensity': (
+                "Acquisition_instrument.TEM.Optics.p3",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.Projector2LensIntensity': (
+                "Acquisition_instrument.TEM.Optics.p4",
+                lambda x: round(float(x)*1E2, 2)),
+            'Optics.LastMeasuredScreenCurrent': (
+                "Acquisition_instrument.TEM.beam_current",
+                lambda x: round(float(x)*1E9, 3)),
+            'Optics.Defocus': (
+                "Acquisition_instrument.TEM.defocus",
+                lambda x: round(float(x)*1E9, 1)),
             'Instrument.InstrumentClass': (
-                "Acquisition_instrument.TEM.microscope", None),
+                "Acquisition_instrument.TEM.microscope",
+                None),
             'Stage.AlphaTilt': (
                 "Acquisition_instrument.TEM.Stage.tilt_alpha",
                 lambda x: round(np.degrees(float(x)), 3)),
@@ -1102,7 +1132,8 @@ class FeiEMDReader(object):
                 "Acquisition_instrument.TEM.Stage.z",
                 lambda x: round(float(x), 6)),
             'ImportedDataParameter.Number_of_frames': (
-                "Acquisition_instrument.TEM.Detector.EDS.number_of_frames", None),
+                "Acquisition_instrument.TEM.Detector.EDS.number_of_frames",
+                None),
             'DetectorMetadata.ElevationAngle': (
                 "Acquisition_instrument.TEM.Detector.EDS.elevation_angle",
                 lambda x: round(float(x), 3)),
@@ -1112,6 +1143,12 @@ class FeiEMDReader(object):
             'DetectorMetadata.Offset': (
                 "Signal.Noise_properties.Variance_linear_model.gain_offset",
                 lambda x: float(x)),
+            'DetectorMetadata.CollectionAngleRange.begin': (
+                "Acquisition_instrument.TEM.Detector.Scanning.Collection_angle.begin",
+                lambda x: round(float(x)*1E3, 1)),
+            'DetectorMetadata.CollectionAngleRange.end': (
+                "Acquisition_instrument.TEM.Detector.Scanning.Collection_angle.end",
+                lambda x: round(float(x)*1E3, 1)),
         }
 
         # Parse individual metadata for each EDS detector
@@ -1127,7 +1164,8 @@ class FeiEMDReader(object):
                     "Acquisition_instrument.TEM.Detector.EDS.real_time",
                     lambda x: '{:.6f}'.format(float(x))),
                 'DetectorMetadata.DetectorName': (
-                    "General.title", None),
+                    "General.title",
+                    None),
             })
 
         # Add selected element
