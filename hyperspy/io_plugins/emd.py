@@ -1054,7 +1054,25 @@ class FeiEMDReader(object):
         meta_sig = {}
         meta_sig['signal_type'] = ''
 
-        return {'General': meta_gen, 'Signal': meta_sig}
+        meta_acquisition = {'TEM':{'Apertures':
+                                       self.parse_aperture_metadata(om)}}
+
+        return {'General': meta_gen, 'Signal': meta_sig,
+                'Acquisition_instrument':meta_acquisition}
+
+    def parse_aperture_metadata(self, om):
+        ap = {}
+        def parse_number(value):
+            return round(float(value)*1E6, 3)
+        for k, a in om['Optics']['Apertures'].items():
+            if a["Type"] != "None":
+                ap.update({a['Name']:{
+                    "type":a["Type"],
+                    "size":parse_number(a["Diameter"]),
+                    "Position":{"x":parse_number(a['PositionOffset']['x']),
+                                "y":parse_number(a['PositionOffset']['y'])}
+                }})
+        return ap
 
     def _get_mapping(self, map_selected_element=True,
                      parse_individual_EDS_detector_metadata=True):
