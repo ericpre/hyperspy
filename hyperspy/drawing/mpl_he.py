@@ -34,6 +34,8 @@ class MPL_HyperExplorer(object):
         self.signal_data_function = None
         self.navigator_data_function = None
         self.signal = None
+        # args to pass to `__call__`
+        self.signal_data_function_kwargs = {}
         self.axes_manager = None
         self.signal_title = ''
         self.navigator_title = ''
@@ -47,25 +49,31 @@ class MPL_HyperExplorer(object):
     def plot_signal(self):
         # This method should be implemented by the subclasses.
         # Doing nothing is good enough for signal_dimension==0 though.
-        return
+        if self.axes_manager.signal_dimension == 0:
+            return
+        if self.signal_data_function_kwargs.get('fft_shift', False):
+            self.axes_manager = self.axes_manager.deepcopy()
+            for axis in self.axes_manager.signal_axes:
+                axis.offset = -axis.high_value / 2.
 
     def plot_navigator(self,
                        colorbar=True,
                        scalebar=True,
                        scalebar_color="white",
                        axes_ticks=None,
-                       saturated_pixels=0,
+                       saturated_pixels=None,
                        vmin=None,
                        vmax=None,
                        no_nans=False,
                        centre_colormap="auto",
                        title=None,
+                       min_aspect=0.1,
                        **kwds):
         if self.axes_manager.navigation_dimension == 0:
             return
         if self.navigator_data_function is None:
             return
-        if self.navigator_data_function is "slider":
+        if self.navigator_data_function == "slider":
             self._get_navigation_sliders()
             return
         title = title or self.signal_title + " Navigator" if self.signal_title else ""
@@ -112,7 +120,7 @@ class MPL_HyperExplorer(object):
             imf.vmax = vmax
             imf.no_nans = no_nans
             imf.centre_colormap = centre_colormap
-            imf.add_widget(self.pointer)
+            imf.min_aspect = min_aspect
             # Navigator labels
             if self.axes_manager.navigation_dimension == 1:
                 imf.yaxis = self.axes_manager.navigation_axes[0]
@@ -144,13 +152,18 @@ class MPL_HyperExplorer(object):
         if self.navigator_plot:
             self.navigator_plot.close()
 
+    @property
     def is_active(self):
-        if self.signal_plot and self.signal_plot.figure:
+        if self.signal_plot and self.signal_plot.figure is not None:
             return True
         else:
             return False
 
     def plot(self, **kwargs):
+        # Parse the kwargs for plotting complex data
+        for key in ['power_spectrum', 'fft_shift']:
+            if key in kwargs:
+                self.signal_data_function_kwargs[key] = kwargs.pop(key)
         if self.pointer is None:
             pointer = self.assign_pointer()
             if pointer is not None:
@@ -163,7 +176,7 @@ class MPL_HyperExplorer(object):
     def assign_pointer(self):
         if self.navigator_data_function is None:
             nav_dim = 0
-        elif self.navigator_data_function is "slider":
+        elif self.navigator_data_function == "slider":
             nav_dim = 0
         else:
             nav_dim = len(self.navigator_data_function().shape)
@@ -184,7 +197,8 @@ class MPL_HyperExplorer(object):
         self.navigator_plot = None
 
     def close(self):
-        if self.signal_plot:
-            self.signal_plot.close()
-        if self.navigator_plot:
-            self.navigator_plot.close()
+        if self.is_active:
+            if self.signal_plot:
+                self.signal_plot.close()
+            if self.navigator_plot:
+                self.navigator_plot.close()

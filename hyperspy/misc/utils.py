@@ -24,13 +24,18 @@ import types
 from io import StringIO
 import codecs
 import collections
-import tempfile
 import unicodedata
 from contextlib import contextmanager
+import importlib
+
+import numpy as np
+
 from hyperspy.misc.signal_tools import broadcast_signals
 from hyperspy.exceptions import VisibleDeprecationWarning
 
-import numpy as np
+import logging
+
+_logger = logging.getLogger(__name__)
 
 
 def attrsetter(target, attrs, value):
@@ -152,15 +157,14 @@ def slugify(value, valid_variable_name=False):
         try:
             # Convert to unicode using the default encoding
             value = str(value)
-        except:
+        except BaseException:
             # Try latin1. If this does not work an exception is raised.
             value = str(value, "latin1")
     value = unicodedata.normalize('NFKD', value).encode('ascii', 'ignore')
     value = value.translate(None, _slugify_strip_re_data).decode().strip()
     value = value.replace(' ', '_')
-    if valid_variable_name is True:
-        if value[:1].isdigit():
-            value = 'Number_' + value
+    if valid_variable_name and not value.isidentifier():
+        value = 'Number_' + value
     return value
 
 
@@ -594,7 +598,7 @@ def ensure_unicode(stuff, encoding='utf8', encoding2='latin-1'):
         string = stuff
     try:
         string = string.decode(encoding)
-    except:
+    except BaseException:
         string = string.decode(encoding2, errors='ignore')
     return string
 
@@ -751,10 +755,6 @@ def closest_power_of_two(n):
     return int(2 ** np.ceil(np.log2(n)))
 
 
-def without_nans(data):
-    return data[~np.isnan(data)]
-
-
 def stack(signal_list, axis=None, new_axis_name='stack_element',
           lazy=None, **kwargs):
     """Concatenate the signals in the list over a given axis or a new axis.
@@ -796,7 +796,6 @@ def stack(signal_list, axis=None, new_axis_name='stack_element',
            [10, 11, 12, 13, 14, 15, 16, 17, 18, 19]])
 
     """
-    from itertools import zip_longest
     from hyperspy.signals import BaseSignal
     import dask.array as da
     from numbers import Number
@@ -951,7 +950,7 @@ def create_map_objects(function, nav_size, iterating_kwargs, **kwargs):
     from hyperspy.signal import BaseSignal
     from itertools import repeat
 
-    iterators = tuple(signal[1]._iterate_signal()
+    iterators = tuple(signal[1]._cycle_signal()
                       if isinstance(signal[1], BaseSignal) else signal[1]
                       for signal in iterating_kwargs)
     # make all kwargs iterating for simplicity:
@@ -1059,3 +1058,41 @@ def add_scalar_axis(signal):
                     offset=0,
                     name="Scalar",
                     navigate=False)
+
+
+def get_object_package_info(obj):
+    """Get info about object package
+
+    Returns
+    -------
+    dic: dict
+        Dictionary containing ``package`` and ``package_version`` (if available)
+    """
+    dic = {}
+    # Note that the following can be "__main__" if the component was user
+    # defined
+    dic["package"] = obj.__module__.split(".")[0]
+    if dic["package"] != "__main__":
+        try:
+            dic["package_version"] = importlib.import_module(
+                dic["package"]).__version__
+        except AttributeError:
+            dic["package_version"] = ""
+            _logger.warning(
+                "The package {package} does not set its version in " +
+                "{package}.__version__. Please report this issue to the " +
+                "{package} developers.".format(package=dic["package"]))
+    else:
+        dic["package_version"] = ""
+    return dic
+
+
+def print_html(f_text, f_html):
+    """Print html version when in Jupyter Notebook"""
+    class PrettyText:
+        def __repr__(self):
+            return f_text()
+
+        def _repr_html_(self):
+            return f_html()
+    return PrettyText()
