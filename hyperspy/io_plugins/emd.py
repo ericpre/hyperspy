@@ -1065,13 +1065,14 @@ class FeiEMDReader(object):
         def parse_number(value):
             return round(float(value)*1E6, 3)
         for k, a in om['Optics']['Apertures'].items():
-            if a["Type"] != "None":
+            if a["Type"] == "Circular" or a["Type"] == "EnergySlit":
                 ap.update({a['Name']:{
                     "type":a["Type"],
-                    "size":parse_number(a["Diameter"]),
                     "Position":{"x":parse_number(a['PositionOffset']['x']),
                                 "y":parse_number(a['PositionOffset']['y'])}
                 }})
+                if a["Type"] == "Circular":
+                    ap[a['Name']].update({"size":parse_number(a["Diameter"])})
         return ap
 
     def _get_mapping(self, map_selected_element=True,
