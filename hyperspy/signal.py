@@ -3032,8 +3032,10 @@ class BaseSignal(FancySlicing,
         (64,64)
 
         """
-        if axis is None:
+        if axis is None or axis == 'navigation':
             axis = self.axes_manager.navigation_axes
+        elif axis == 'signal':
+            axis = self.axes_manager.signal_axes
         return self._apply_function_on_data_and_remove_axis(
             np.sum, axis, out=out, rechunk=rechunk)
     sum.__doc__ %= (MANY_AXIS_PARAMETER, OUT_ARG, RECHUNK_ARG)

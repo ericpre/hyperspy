@@ -334,7 +334,7 @@ class Signal2D(BaseSignal, CommonSignal2D):
         )
     plot.__doc__ %= (BASE_PLOT_DOCSTRING, PLOT2D_DOCSTRING, KWARGS_DOCSTRING)
 
-    def add_signal_roi(self, cx=0.0, cy=0.0, r=5.0):
+    def add_signal_roi(self, cx=0.0, cy=0.0, r=5.0, r_inner=None):
         """
         This is a dirty method, which is useful to add ``CircleROI`` to signal
         axes.
@@ -350,22 +350,24 @@ class Signal2D(BaseSignal, CommonSignal2D):
 
         Returns
         -------
-        None.
+        ircleROI
 
         """
         index_roi = next(self._index_roi)
         color_name = self._colors_name[index_roi]
-        roi = CircleROI(cx, cy, r)
+        roi = CircleROI(cx, cy, r, r_inner)
         roi_signal = roi.interactive(self,
                                      axes=self.axes_manager.signal_axes,
                                      color=mcolors.TABLEAU_COLORS[color_name])
         roi_sum = interactive(roi_signal.sum,
-                              axis=roi_signal.axes_manager.signal_axes,
+                              axis='signal',
                               recompute_out_event=None)
         # necessary to get the ROI interactive
         roi_sum.axes_manager.set_signal_dimension(2)
         roi_sum.metadata.General.title = f"{index_roi} - {color_name.split('tab:')[1]}"
         roi_sum.plot()
+
+        return roi
 
     def create_model(self, dictionary=None):
         """Create a model for the current signal
