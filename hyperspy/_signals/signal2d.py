@@ -16,7 +16,10 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
+import itertools
+
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import numpy as np
 import numpy.ma as ma
 import dask.array as da
@@ -31,6 +34,8 @@ from hyperspy.misc.math_tools import symmetrize, antisymmetrize
 from hyperspy.signal import BaseSignal
 from hyperspy._signals.lazy import LazySignal
 from hyperspy._signals.common_signal2d import CommonSignal2D
+from hyperspy.roi import CircleROI
+from hyperspy.interactive import interactive
 from hyperspy.docstrings.plot import (
     BASE_PLOT_DOCSTRING, PLOT2D_DOCSTRING, KWARGS_DOCSTRING)
 from hyperspy.docstrings.signal import SHOW_PROGRESSBAR_ARG, PARALLEL_ARG
@@ -289,6 +294,8 @@ class Signal2D(BaseSignal, CommonSignal2D):
         super().__init__(*args, **kw)
         if self.axes_manager.signal_dimension != 2:
             self.axes_manager.set_signal_dimension(2)
+        self._index_roi = itertools.count(1)
+        self._colors_name = [key for key in mcolors.TABLEAU_COLORS.keys()]
 
     def plot(self,
              colorbar=True,
@@ -326,6 +333,39 @@ class Signal2D(BaseSignal, CommonSignal2D):
             **kwargs
         )
     plot.__doc__ %= (BASE_PLOT_DOCSTRING, PLOT2D_DOCSTRING, KWARGS_DOCSTRING)
+
+    def add_signal_roi(self, cx=0.0, cy=0.0, r=5.0):
+        """
+        This is a dirty method, which is useful to add ``CircleROI`` to signal
+        axes.
+
+        Parameters
+        ----------
+        cx : float or int, optional
+            x position of the center
+        cy : float or int, optional
+            y position of the center
+        r : float or int, optional
+            Radius of the circle roi.
+
+        Returns
+        -------
+        None.
+
+        """
+        index_roi = next(self._index_roi)
+        color_name = self._colors_name[index_roi]
+        roi = CircleROI(cx, cy, r)
+        roi_signal = roi.interactive(self,
+                                     axes=self.axes_manager.signal_axes,
+                                     color=mcolors.TABLEAU_COLORS[color_name])
+        roi_sum = interactive(roi_signal.sum,
+                              axis=roi_signal.axes_manager.signal_axes,
+                              recompute_out_event=None)
+        # necessary to get the ROI interactive
+        roi_sum.axes_manager.set_signal_dimension(2)
+        roi_sum.metadata.General.title = f"{index_roi} - {color_name.split('tab:')[1]}"
+        roi_sum.plot()
 
     def create_model(self, dictionary=None):
         """Create a model for the current signal
