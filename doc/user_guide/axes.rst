@@ -5,17 +5,17 @@ Axes handling
 The navigation and signal dimensions
 ------------------------------------
 
-In HyperSpy the data is interpreted as a signal array and, therefore, the data
+In HyperSpy, the data is interpreted as a signal array and, therefore, the data
 axes are not equivalent. HyperSpy distinguishes between *signal* and
 *navigation* axes and most functions operate on the *signal* axes and
-iterate on the *navigation* axes. For example, an EELS spectrum image (i.e.
-a 2D array of spectra) has three dimensions X, Y and energy-loss. In
+iterate over the *navigation* axes. For example, an EELS spectrum image (i.e.
+a 2D array of spectra) has three dimensions: X, Y and energy-loss. In
 HyperSpy, X and Y are the *navigation* dimensions and the energy-loss is the
-*signal* dimension. To make this distinction more explicit the
+*signal* dimension. To make this distinction more explicit, the
 representation of the object includes a separator ``|`` between the
-navigation and signal dimensions e.g.
+navigation and signal dimensions.
 
-In HyperSpy a spectrum image has signal dimension 1 and navigation dimension 2
+For example: A spectrum image has signal dimension 1 and navigation dimension 2
 and is stored in the Signal1D subclass.
 
 .. code-block:: python
@@ -35,46 +35,46 @@ in the Signal2D subclass.
     <Signal2D, title: , dimensions: (30|20, 10)>
 
 Note that HyperSpy rearranges the axes when compared to the array order. The
-following few paragraphs explain how and why it does it.
+following few paragraphs explain how and why.
 
-Depending how the array is arranged, some axes are faster to iterate than
+Depending on how the array is arranged, some axes are faster to iterate than
 others. Consider an example of a book as the dataset in question. It is
 trivially simple to look at letters in a line, and then lines down the page,
-and finally pages in the whole book.  However if your words are written
+and finally pages in the whole book.  However, if your words are written
 vertically, it can be inconvenient to read top-down (the lines are still
-horizontal, it's just the meaning that's vertical!). It's very time-consuming
+horizontal, it's just the meaning that's vertical!). It is very time-consuming
 if every letter is on a different page, and for every word you have to turn 5-6
 pages. Exactly the same idea applies here - in order to iterate through the
-data (most often for plotting, but applies for any other operation too), you
+data (most often for plotting, but for any other operation as well), you
 want to keep it ordered for "fast access".
 
-In Python (more explicitly `numpy`) the "fast axes order" is C order (also
+In Python (more explicitly `numpy`), the "fast axes order" is `C order` (also
 called row-major order). This means that the **last** axis of a numpy array is
 fastest to iterate over (i.e. the lines in the book). An alternative ordering
-convention is F order (column-major), where it is the reverse - the first axis
-of an array is the fastest to iterate over. In both cases, the further an axis
-is from the `fast axis` the slower it  is to iterate over it. In the book
-analogy you could think, for example, think about reading the first lines of
+convention is `F order` (column-major), where it is the other way round: the
+first axis of an array is the fastest to iterate over. In both cases, the
+further an axis is from the `fast axis` the slower it is to iterate over this
+axis. In the book analogy, you could think about reading the first lines of
 all pages, then the second and so on.
 
-When data is acquired sequentially it is usually stored in acquisition order.
+When data is acquired sequentially, it is usually stored in acquisition order.
 When a dataset is loaded, HyperSpy generally stores it in memory in the same
 order, which is good for the computer. However, HyperSpy will reorder and
 classify the axes to make it easier for humans. Let's imagine a single numpy
 array that contains pictures of a scene acquired with different exposure times
-on different days. In numpy the array dimensions are  ``(D, E, Y, X)``. This
+on different days. In numpy, the array dimensions are  ``(D, E, Y, X)``. This
 order makes it fast to iterate over the images in the order in which they were
 acquired. From a human point of view, this dataset is just a collection of
 images, so HyperSpy first classifies the image axes (``X`` and ``Y``) as
 `signal axes` and the remaining axes the `navigation axes`. Then it reverses
-the order of each sets of axes because many humans are used to get the ``X``
-axis first and, more generally the axes in acquisition order from left to
+the order of each set of axes because many humans are used to get the ``X``
+axis first and, more generally, the axes in acquisition order from left to
 right. So, the same axes in HyperSpy are displayed like this: ``(E, D | X,
 Y)``.
 
 Extending this to arbitrary dimensions, by default, we reverse the numpy axes,
-chop it into two chunks (signal and navigation), and then swap those chunks, at
-least when printing. As an example:
+chop them into two chunks (signal and navigation), and then swap those chunks,
+at least when printing. As an example:
 
 .. code-block:: bash
     (a1, a2, a3, a4, a5, a6) # original (numpy)
@@ -95,7 +95,7 @@ Setting axis properties
 The axes are managed and stored by the :py:class:`~.axes.AxesManager` class
 that is stored in the :py:attr:`~.signal.BaseSignal.axes_manager` attribute of
 the signal class. The individual axes can be accessed by indexing the
-AxesManager. e.g.
+AxesManager, e.g.:
 
 .. code-block:: python
 
@@ -110,7 +110,7 @@ AxesManager. e.g.
 
 
 The axis properties can be set by setting the :py:class:`~.axes.BaseDataAxis`
-attributes e.g.
+attributes, e.g.:
 
 .. code-block:: python
 
@@ -145,7 +145,8 @@ It is also possible to set the axes properties using a GUI by calling the
 
    AxesManager ipywidgets GUI.
 
-or the :py:class:`~.axes.DataAxis`, e.g:
+or, for a specific axis, the respective method of e.g.
+:py:class:`~.axes.LinearDataAxis`:
 
 .. code-block:: python
 
@@ -156,7 +157,7 @@ or the :py:class:`~.axes.DataAxis`, e.g:
 .. figure::  images/data_axis_gui_ipywidgets.png
    :align:   center
 
-   DataAxis ipywidgets GUI.
+   LinearDataAxis ipywidgets GUI.
 
 To simply change the "current position" (i.e. the indices of the navigation
 axes) you could use the navigation sliders:
@@ -173,10 +174,10 @@ axes) you could use the navigation sliders:
    Navigation sliders ipywidgets GUI.
 
 Alternatively, the "current position" can be changed programmatically by
-directly accessing ``indices`` attribute of a Signal's
-:py:class:`~.axes.AxesManager`. This is particularly useful if trying to set
-a specific location with which to initialize a model's parameters to
-sensible values before preforming a fit over an entire spectrum image. The
+directly accessing the ``indices`` attribute of a signal's
+:py:class:`~.axes.AxesManager`. This is particularly useful when trying to set
+a specific location at which to initialize a model's parameters to
+sensible values before performing a fit over an entire spectrum image. The
 ``indices`` must be provided as a tuple, with the same length as the number of
 navigation dimensions:
 
@@ -193,14 +194,16 @@ Types of data axes
 HyperSpy supports different *data axis types*, which differ in how the axis is
 defined: 
 
-* by a vector ``axis``, 
-* by a function ``expression`` or 
-* by the initial value ``offset`` and spacing ``scale``.
+* :py:class:`~.axes.DataAxis` defined by a vector ``axis``, 
+* :py:class:`~.axes.FunctionalDataAxis` defined by a function ``expression`` or 
+* :py:class:`~.axes.LinearDataAxis` defined by the initial value ``offset``
+and spacing ``scale``.
 
 The main disambiguation is whether the
-axis is *linear*, where the data points are equidistantly spaced, or
-*non linear*. The latter can become important when, e.g., a spectrum recorded
-over a *wavelength* axis is converted to an *energy* scale, where the
+axis is **linear**, where the data points are equidistantly spaced, or
+**non linear**, where the spacing may vary. The latter can become important
+when, e.g., a spectrum recorded
+over a *wavelength* axis is converted to a *wavenumber* scale, where the
 conversion is based on a ``1/x`` dependence so that the axis spacing of the new
 axis varies along the length of the axis.
 
@@ -233,14 +236,15 @@ following table.
 Linear data axis
 ^^^^^^^^^^^^^^^^
 
-The *default* case is the ``LinearDataAxis``. Here, the axis is defined by the
-``offset`` and ``scale`` parameters, which determine the initial value and
-spacing, respectively. The actual ``axis`` vector is automatically
+The most common case is the :py:class:`~.axes.LinearDataAxis`. Here, the axis
+is defined by
+the ``offset`` and ``scale`` parameters, which determine the `initial value`
+and `spacing`, respectively. The actual ``axis`` vector is automatically
 calculated from these two values. In a way, the ``LinearDataAxis`` is a special
 case of the ``FunctionalDataAxis`` defined by the function
 ``scale * x + offset``.
 
-Sample dictionary for a ``LinearDataAxis``:
+Sample dictionary for a :py:class:`~.axes.LinearDataAxis`:
 
 .. code-block:: python
 
@@ -253,7 +257,7 @@ Sample dictionary for a ``LinearDataAxis``:
     'scale': 1,
     'offset': 300}
 
-Corresponding output of ``AxesManager``:
+Corresponding output of :py:class:`~.axes.AxesManager`:
 
 .. code-block:: python
 
@@ -268,21 +272,21 @@ Corresponding output of ``AxesManager``:
 Functional data axis
 ^^^^^^^^^^^^^^^^^^^^
 
-Alternatively, the axis can be defined based on an ``expression`` that is
-evaluated to yield the axis points. ``expression`` is a function defined as
-a ``string`` using the
+Alternatively, a :py:class:`~.axes.FunctionalDataAxis` is defined based on an
+``expression`` that is evaluated to yield the axis points. The `expression`
+is a function defined as a ``string`` using the
 `SymPy <https://docs.sympy.org/latest/tutorial/intro.html>`_ text expression
 format. An example would be ``expression = a / x + b``. Any variables in the
 expression, in this case ``a`` and ``b`` must be defined as additional
-attributes of the axis. The property
-``is_linear`` is automatically set to ``False``.
+attributes of the axis. The property ``is_linear`` is automatically set to
+``False``.
 
 By default, the axis is built using a vector ``x = np.arange(size)``. However,
 the expression can also reference a vector ``x0`` that contains an array of 
 `x-values` at which to evaluate `expression`. For example: ``expression = '1240
 / x0', x0 = np.arange(300,400,0.5)``
 
-Sample dictionary for a ``FunctionalDataAxis``:
+Sample dictionary for a :py:class:`~.axes.FunctionalDataAxis`:
 
 .. code-block:: python
 
@@ -296,7 +300,7 @@ Sample dictionary for a ``FunctionalDataAxis``:
     'a': 100,
     'b': 10}
 
-Corresponding output of ``AxesManager``:
+Corresponding output of :py:class:`~.axes.AxesManager`:
 
 .. code-block:: python
 
@@ -311,12 +315,12 @@ Corresponding output of ``AxesManager``:
 (Non linear) Data axis
 ^^^^^^^^^^^^^^^^^^^^^^
 
-A ``DataAxis`` is the most flexible type of axis. The axis points are directly
-given by a vector ``axis``. As this can be any vector, the property
-``is_linear`` is automatically set to ``False``.
+A :py:class:`~.axes.DataAxis` is the most flexible type of axis. The axis
+points are directly given by a vector named ``axis``. As this can be any
+vector, the property ``is_linear`` is automatically set to ``False``.
 
 
-Sample dictionary for a ``DataAxis``:
+Sample dictionary for a :py:class:`~.axes.DataAxis`:
 
 .. code-block:: python
 
@@ -327,7 +331,7 @@ Sample dictionary for a ``DataAxis``:
     'navigate': False,
     'axis': array([  0,   1,   4,   9,  16,  25,  36,  49,  64,  81, 100, 121])}
 
-Corresponding output of ``AxesManager``:
+Corresponding output of :py:class:`~.axes.AxesManager`:
 
 .. code-block:: python
 
@@ -344,7 +348,8 @@ Corresponding output of ``AxesManager``:
 Using quantity and converting units
 -----------------------------------
 
-The scale and the offset of each axis can be set and retrieved as quantity.
+The ``scale`` and the ``offset`` of each :py:class:`~.axes.LinearDataAxis` axis
+can be set and retrieved as quantity.
 
 .. code-block:: python
 
@@ -381,10 +386,10 @@ manage the scale and offset quantities. The ``scale_as_quantity`` and
 
 The ``convert_units`` method of the :py:class:`~.axes.AxesManager` converts
 units, which by default (no parameters provided) converts all axis units to an
-optimal units to avoid using too large or small number.
+optimal unit to avoid using too large or small numbers.
 
 Each axis can also be converted individually using the ``convert_to_units``
-method of the :py:class:`~.axes.DataAxis`:
+method of the :py:class:`~.axes.LinearDataAxis`:
 
 .. code-block:: python
 
