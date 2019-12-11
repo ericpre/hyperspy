@@ -34,6 +34,10 @@ in the Signal2D subclass.
     >>> im
     <Signal2D, title: , dimensions: (30|20, 10)>
 
+
+Axes storage and ordering
+^^^^^^^^^^^^^^^^^^^^^^^^^
+
 Note that HyperSpy rearranges the axes when compared to the array order. The
 following few paragraphs explain how and why.
 
@@ -108,6 +112,24 @@ AxesManager, e.g.:
     >>> s.axes_manager[0]
     <Unnamed 0th axis, size: 20, index: 0>
 
+The navigation axes come first, followed by the signal axes. Alternatively, 
+it is possible to selectively access the navigation or signal dimensions:
+
+.. code-block:: python
+
+    >>> s.axes_manager.navigation_axes[1]
+    <Unnamed 1st axis, size: 10, index: 0>
+    >>> s.axes_manager.signal_axes[0]
+    <Unnamed 2nd axis, size: 100>
+
+For the given example of two navigation and one signal dimensions, all the
+following commands will access the same axis:
+
+.. code-block:: python
+
+    >>> s.axes_manager[2]
+    >>> s.axes_manager[-1]
+    >>> s.axes_manager.signal_axes[0]
 
 The axis properties can be set by setting the :py:class:`~.axes.BaseDataAxis`
 attributes, e.g.:
@@ -175,7 +197,8 @@ axes) you could use the navigation sliders:
 
 Alternatively, the "current position" can be changed programmatically by
 directly accessing the ``indices`` attribute of a signal's
-:py:class:`~.axes.AxesManager`. This is particularly useful when trying to set
+:py:class:`~.axes.AxesManager` or the ``index`` attribute of an individual
+axis. This is particularly useful when trying to set
 a specific location at which to initialize a model's parameters to
 sensible values before performing a fit over an entire spectrum image. The
 ``indices`` must be provided as a tuple, with the same length as the number of
@@ -184,6 +207,24 @@ navigation dimensions:
 .. code-block:: python
 
     >>> s.axes_manager.indices = (5, 4)
+
+
+Summary of axis properties
+^^^^^^^^^^^^^^^^^^^^^
+
+* ``name`` (str) and ``units`` (str) are basic parameters describing an axis
+  used in plotting. The latter enables the :ref:`conversion of units
+  <quantity_and_converting_units>`.
+* ``navigate`` (bool) determines, whether it is a navigation axis.
+* ``size`` (int) gives the number of elements in an axis.
+* ``index`` (int) determines the "current position for a navigation axis and
+  ``value`` (float) returns the value at this position.
+* ``low_index`` (int) and ``high_index`` (int) are the first and last index.
+* ``low_value`` (int) and ``high_value`` (int) are the smallest and largest
+  value.
+* The ``axis`` (array) vector stores the values of the axis points. However,
+  depending on the type of axis, this vector may be updated from the **defining
+  attributes** as discussed in the following section.
 
 
 .. _Axes_types:
@@ -202,10 +243,11 @@ and spacing ``scale``.
 The main disambiguation is whether the
 axis is **linear**, where the data points are equidistantly spaced, or
 **non linear**, where the spacing may vary. The latter can become important
-when, e.g., a spectrum recorded
-over a *wavelength* axis is converted to a *wavenumber* scale, where the
-conversion is based on a ``1/x`` dependence so that the axis spacing of the new
-axis varies along the length of the axis.
+when, e.g., a spectrum recorded over a *wavelength* axis is converted to a
+*wavenumber* or *energy* scale, where the conversion is based on a ``1/x``
+dependence so that the axis spacing of the new axis varies along the length
+of the axis. Whether an axis is linear or not can be queried through the 
+property ``is_linear`` (bool) of the axis.
 
 Every axis of a signal object may be of a different type. For example, it will
 be common that the *navigation* axes are *linear*, while the *signal* axis is
@@ -218,13 +260,13 @@ following table.
 .. table:: BaseDataAxis subclasses.
 
     +-------------------------------------------------------------------+------------------------+-------------+
-    |                   BaseDataAxis subclass                           | determining attributes |  is_linear  |
+    |                   BaseDataAxis subclass                           |  defining attributes   |  is_linear  |
     +===================================================================+========================+=============+
-    |                :py:class:`~.axes.DataAxis`                        |        axis            |  False      |
+    |                :py:class:`~.axes.DataAxis`                        |         axis           |  False      |
     +-------------------------------------------------------------------+------------------------+-------------+
-    |           :py:class:`~.axes.FunctionalDataAxis`                   |     expression         |  False      |
+    |           :py:class:`~.axes.FunctionalDataAxis`                   |      expression        |  False      |
     +-------------------------------------------------------------------+------------------------+-------------+
-    |             :py:class:`~.axes.LinearDataAxis`                     |   offset, scale        |  True       |
+    |             :py:class:`~.axes.LinearDataAxis`                     |    offset, scale       |  True       |
     +-------------------------------------------------------------------+------------------------+-------------+    
 
 .. NOTE::
@@ -237,18 +279,18 @@ Linear data axis
 ^^^^^^^^^^^^^^^^
 
 The most common case is the :py:class:`~.axes.LinearDataAxis`. Here, the axis
-is defined by
-the ``offset`` and ``scale`` parameters, which determine the `initial value`
-and `spacing`, respectively. The actual ``axis`` vector is automatically
-calculated from these two values. In a way, the ``LinearDataAxis`` is a special
-case of the ``FunctionalDataAxis`` defined by the function
+is defined by the ``offset`` and ``scale`` parameters, which determine the
+`initial value` and `spacing`, respectively. The actual ``axis`` vector is
+automatically calculated from these two values. The ``LinearDataAxis`` is a
+special case of the ``FunctionalDataAxis`` defined by the function
 ``scale * x + offset``.
 
 Sample dictionary for a :py:class:`~.axes.LinearDataAxis`:
 
 .. code-block:: python
 
-    >>> s = hs.signals.Signal1D(np.ones(500), axes=({'offset': 300, 'scale': 1, 'size': 500}, ))
+    >>> dict0 = {'offset': 300, 'scale': 1, 'size': 500}
+    >>> s = hs.signals.Signal1D(np.ones(500), axes=[dict0])
     >>> s.axes_manager[0].get_axis_dictionary()
     {'name': <undefined>,
     'units': <undefined>,
@@ -290,7 +332,8 @@ Sample dictionary for a :py:class:`~.axes.FunctionalDataAxis`:
 
 .. code-block:: python
 
-    >>> s = hs.signals.Signal1D(np.ones(500), axes=({'expression': 'a / (x + 1) + b', 'a': 100, 'b': 10, 'size': 500}, ))
+    >>> dict0 = {'expression': 'a / (x + 1) + b', 'a': 100, 'b': 10, 'size': 500}
+    >>> s = hs.signals.Signal1D(np.ones(500), axes=[dict0])
     >>> s.axes_manager[0].get_axis_dictionary()
     {'name': <undefined>,
     'units': <undefined>,
@@ -324,7 +367,8 @@ Sample dictionary for a :py:class:`~.axes.DataAxis`:
 
 .. code-block:: python
 
-    >>> s = hs.signals.Signal1D(np.ones(12), axes=({'axis': np.arange(12)**2}, ))
+    >>> dict0 = {'axis': np.arange(12)**2}
+    >>> s = hs.signals.Signal1D(np.ones(12), axes=[dict0])
     >>> s.axes_manager[0].get_axis_dictionary()
     {'name': <undefined>,
     'units': <undefined>,
@@ -341,6 +385,44 @@ Corresponding output of :py:class:`~.axes.AxesManager`:
     ================ | ====== | ====== | ======= | ======= | ======
     ---------------- | ------ | ------ | ------- | ------- | ------
                      |     12 |        |     300 |       1 |       
+
+
+Defining a new axis
+-------------------
+
+An axis object can be created through the ``axes.create_axis()`` method, which
+automatically determines the type of axis by the given attributes:
+
+.. code-block:: python
+
+    >>> axis = axes.create_axis(offset=10,scale=0.5,size=20)
+    >>> axis
+    <Unnamed axis, size: 20>
+    
+Alternatively, the creator of the different types of axes can be called
+directly:
+
+.. code-block:: python
+
+    >>> axis = axes.LinearDataAxis(offset=10,scale=0.5,size=20)
+    >>> axis
+    <Unnamed axis, size: 20>
+    
+The dictionary defining the axis is returned by the ``get_axis_dictionary()``
+method:
+
+.. code-block:: python
+
+    >>> axis.get_axis_dictionary()
+    {'name': <undefined>,
+    'units': <undefined>,
+    'navigate': <undefined>,
+    'size': 20,
+    'scale': 0.5,
+    'offset': 10.0}
+
+This dictionary can be used, for example, in the :ref:`initilization of a new
+signal<signal_initialization>`.
 
 
 .. _quantity_and_converting_units:
