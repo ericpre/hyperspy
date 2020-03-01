@@ -20,7 +20,7 @@ file_extensions = ['jpk', 'JPK', 'jpk-force', 'JPK-FORCE',
                    'jpk-force-map', 'jpk-qi-data']
 default_extension = 0
 
- # Writing capabilities:
+# Writing capabilities:
 writes = False
 
 mapping = {'date': ('General.date', None),
@@ -28,32 +28,31 @@ mapping = {'date': ('General.date', None),
 
 
 class JPKReader:
-    
-    def __init__(self, filename):
-        self.afm_data = afmformats.load_data(filename) 
+
+    def __init__(self, filename, load_segment=None):
+        self.afm_data = afmformats.load_data(filename,
+                                             load_segment=load_segment)
 
     def read_single_pixel(self, segment=None, columns=None):
-    
+
         afm_data = self.afm_data[0]
         dictionaries = []
-    
+
         om = afm_data.metadata
-        
+
         if columns is None:
             # Read what are the columns
             columns = afm_data.columns
-        elif not isinstance(columns, list):
-            columns = [columns]
 
         if segment is None:
             segment = ['approach', 'retract']
         elif not isinstance(segment, list):
             segment = [segment]
-        
+
         for seg in segment:
             for col in columns:
                 dictionaries.append(self._read_segment(afm_data, seg, col, om))
-        
+
         return dictionaries
 
     def _read_segment(self, afm_data, segment, column, om):
@@ -76,11 +75,11 @@ class JPKReader:
             data = data[::-1]
         else:
             offset = height[0]
-        
+
         axes = [{'size': size,
                  'name': 'height (piezo)',
                  'offset': offset,
-                 'scale':scale,
+                 'scale': scale,
                  'units': units}]
 
         meta_gen = {}
@@ -101,13 +100,19 @@ class JPKReader:
     def read_map(self, segment=None, columns=None):
         # Get grid shape and calibration
         afm_data0 = self.afm_data[0]
+
+        if columns is None:
+            # Read what are the columns
+            columns = afm_data0.columns
+        print("columns", columns)
+
         x_size = afm_data0.metadata['grid shape x']
         y_size = afm_data0.metadata['grid shape y']
         x_scale = afm_data0.metadata['grid size x'] / x_size
         y_scale = afm_data0.metadata['grid size y'] / y_size
-        sig_size = len(afm_data0.retr['time'])
+        sig_size = len(afm_data0.retr[columns[0]])
         units = 'm'
-        
+
         axes_list = [{'index_in_array': 0,
                       'size': y_size,
                       'name': 'y',
@@ -124,39 +129,34 @@ class JPKReader:
                       'navigate': True}
                      ]
         dictionaries = []
-    
+
         om = afm_data0.metadata
-        
-        if columns is None:
-            # Read what are the columns
-            columns = afm_data0.columns
-        elif not isinstance(columns, list):
-            columns = [columns]
 
         if segment is None:
             segment = ['approach', 'retract']
         elif not isinstance(segment, list):
             segment = [segment]
-        
+
         for col in columns:
             for seg in segment:
                 if seg == 'approach':
                     _seg = 'appr'
                 if seg == 'retract':
                     _seg = 'retr'
-                arr = np.stack([getattr(afm_datum, _seg)[col] for afm_datum in self.afm_data])
+                arr = np.stack([getattr(afm_datum, _seg)[col]
+                                for afm_datum in self.afm_data])
                 axes_dict, md = self._read_segment_metdata_axis(
                     afm_data0, seg, col, om)
                 axes = axes_list.copy()
                 axes.extend(axes_dict)
                 dictionaries.append(
                     {'data': arr.reshape((x_size, y_size, sig_size)),
-                    'axes': axes,
-                    'metadata': md,
-                    'original_metadata':om,
-                    'mapping':mapping
-                    }
-                    )
+                     'axes': axes,
+                     'metadata': md,
+                     'original_metadata': om,
+                     'mapping': mapping
+                     }
+                )
 
         return dictionaries
 
@@ -180,12 +180,12 @@ class JPKReader:
             data = data[::-1]
         else:
             offset = height[0]
-        
+
         axes = [{'index_in_array': -1,
                  'size': size,
                  'name': 'height (piezo)',
                  'offset': offset,
-                 'scale':scale,
+                 'scale': scale,
                  'units': units,
                  'navigate': False}]
 
@@ -197,11 +197,18 @@ class JPKReader:
 
         return axes, {'General': meta_gen, 'Signal': meta_sig}
 
-        
 
-def file_reader(filename, lazy=False, segment=None, columns=None, **kwds):
-    
-    jpk_loader = JPKReader(filename)
+def file_reader(filename, lazy=False, segment=None, columns=None):
+
+    load_segment = None
+    if columns is not None and not isinstance(columns, list):
+        columns = [columns]
+        load_segment = columns.copy()
+
+    if load_segment is not None and 'height (piezo)' not in load_segment:
+        load_segment.append('height (piezo)')
+
+    jpk_loader = JPKReader(filename, load_segment=load_segment)
 
     if len(jpk_loader.afm_data) == 1:
         return jpk_loader.read_single_pixel(segment, columns)
