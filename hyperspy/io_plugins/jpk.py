@@ -29,9 +29,12 @@ mapping = {'date': ('General.date', None),
 
 class JPKReader:
 
-    def __init__(self, filename, load_segment=None):
+    def __init__(self, filename, load_segment=None,
+                 abscisse='height (measured)', conversion=True):
         self.afm_data = afmformats.load_data(filename,
-                                             load_segment=load_segment)
+                                             load_segment=load_segment,
+                                             conversion=conversion)
+        self.abscisse = abscisse
 
     def read_single_pixel(self, segment=None, columns=None):
 
@@ -64,7 +67,7 @@ class JPKReader:
             raise ValueError("'segment' must be 'approach' or 'retract'.")
         data = seg[column]
 
-        height = seg['height (piezo)']
+        height = seg[self.abscisse]
         size = len(height)
         scale = (height[1:] - height[:1]).mean()
         units = 'm'
@@ -77,7 +80,7 @@ class JPKReader:
             offset = height[0]
 
         axes = [{'size': size,
-                 'name': 'height (piezo)',
+                 'name': self.abscisse,
                  'offset': offset,
                  'scale': scale,
                  'units': units}]
@@ -169,7 +172,7 @@ class JPKReader:
             raise ValueError("'segment' must be 'approach' or 'retract'.")
         data = seg[column]
 
-        height = seg['height (piezo)']
+        height = seg[self.abscisse]
         size = len(height)
         scale = (height[1:] - height[:1]).mean()
         units = 'm'
@@ -183,7 +186,7 @@ class JPKReader:
 
         axes = [{'index_in_array': -1,
                  'size': size,
-                 'name': 'height (piezo)',
+                 'name': self.abscisse,
                  'offset': offset,
                  'scale': scale,
                  'units': units,
@@ -193,22 +196,24 @@ class JPKReader:
         meta_gen['original_filename'] = os.path.split(om['path'])[1]
         meta_gen['title'] = f"{segment}, {column}"
 
-        meta_sig = {'signal_type': ''}
+        meta_sig = {'signal_type': '', 'quantity': ''}
 
         return axes, {'General': meta_gen, 'Signal': meta_sig}
 
 
-def file_reader(filename, lazy=False, segment=None, columns=None):
+def file_reader(filename, lazy=False, segment=None, columns=None,
+                abscisse='height (measured)', conversion=True):
 
     load_segment = None
     if columns is not None and not isinstance(columns, list):
         columns = [columns]
         load_segment = columns.copy()
 
-    if load_segment is not None and 'height (piezo)' not in load_segment:
-        load_segment.append('height (piezo)')
+    if load_segment is not None and abscisse not in load_segment:
+        load_segment.append(abscisse)
 
-    jpk_loader = JPKReader(filename, load_segment=load_segment)
+    jpk_loader = JPKReader(filename, load_segment=load_segment,
+                           abscisse=abscisse, conversion=conversion)
 
     if len(jpk_loader.afm_data) == 1:
         return jpk_loader.read_single_pixel(segment, columns)

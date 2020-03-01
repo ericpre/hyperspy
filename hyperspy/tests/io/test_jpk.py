@@ -13,7 +13,7 @@ def test_single_jpk_force():
     len(s) == 12
     s = hs.load(FNAME, columns='force')
     len(s) == 2
-    s = hs.load(FNAME, segment='approach')
+    s = hs.load(FNAME, segment='approach', abscisse='height (piezo)')
     len(s) == 6
     am = s[0].axes_manager
     np.testing.assert_allclose(am[0].size, 1024)
@@ -21,12 +21,21 @@ def test_single_jpk_force():
     np.testing.assert_allclose(am[0].offset, 5.524879e-06)
     assert am[0].units == 'm'
 
+    s = hs.load(FNAME, columns='force', segment='approach')
+    len(s) == 6
+    am = s.axes_manager
+    np.testing.assert_allclose(am[0].size, 1024)
+    np.testing.assert_allclose(am[0].scale, 5.481282e-07)
+    np.testing.assert_allclose(am[0].offset, 7.987067e-06)
+    assert am[0].units == 'm'
+
 
 def test_map_jpk_forge():
     FNAME = os.path.join(FILE_PATH, 'map.jpk-force-map')
     s = hs.load(FNAME, segment='retract')
     len(s) == 6
-    s = hs.load(FNAME, segment='retract', columns='force')
+    s = hs.load(FNAME, segment='retract', columns='force',
+                abscisse='height (piezo)', conversion=False)
     len(s) == 1
     am = s.axes_manager
     np.testing.assert_allclose(am[0].size, 8)
@@ -37,9 +46,17 @@ def test_map_jpk_forge():
     np.testing.assert_allclose(am[1].offset, 0.)  
     np.testing.assert_allclose(am[2].size, 1024)
     np.testing.assert_allclose(am[2].scale, 3.580294e-07)
-    np.testing.assert_allclose(am[2].offset, 5.499739e-06)    
+    np.testing.assert_allclose(am[2].offset, 5.499739e-06) 
+
+    s = hs.load(FNAME, segment='retract', columns='force')
+    am = s.axes_manager
+    len(s) == 1
+    np.testing.assert_allclose(am[2].size, 1024)
+    np.testing.assert_allclose(am[2].scale, 3.242403e-07)
+    np.testing.assert_allclose(am[2].offset, 8.413174e-06)
+
 
 import afmformats
 
 FNAME = os.path.join(FILE_PATH, 'map.jpk-force-map')
-afm_data = afmformats.load_data(FNAME) 
+afm_data = afmformats.load_data(FNAME, load_segment=None, conversion=True)
