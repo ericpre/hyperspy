@@ -196,7 +196,12 @@ class JPKReader:
         meta_gen['original_filename'] = os.path.split(om['path'])[1]
         meta_gen['title'] = f"{segment}, {column}"
 
-        meta_sig = {'signal_type': '', 'quantity': ''}
+        meta_sig = {'signal_type': ''}
+
+        try:
+            meta_sig['quantify'] = f"{column} ({om['units'][column]})"
+        except KeyError:
+            pass
 
         return axes, {'General': meta_gen, 'Signal': meta_sig}
 

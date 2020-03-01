@@ -56,7 +56,7 @@ def test_map_jpk_forge():
     np.testing.assert_allclose(am[2].offset, 8.413174e-06)
 
 
-import afmformats
+# import afmformats
 
-FNAME = os.path.join(FILE_PATH, 'map.jpk-force-map')
-afm_data = afmformats.load_data(FNAME, load_segment=None, conversion=True)
+# FNAME = os.path.join(FILE_PATH, 'map.jpk-force-map')
+# afm_data = afmformats.load_data(FNAME, load_segment=None, conversion=False)
