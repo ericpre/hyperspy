@@ -281,14 +281,14 @@ class WidgetBase(object):
 
     def _i2v(self, axis, i):
         """Wrapped version of DataAxis.index2value, which bounds the value
-        inbetween axis.low_value and axis.high_value+axis.scale, and does not
-        raise a ValueError.
+        in between axis.low_value and axis.high_value + axis.scale, and does
+        not raise a ValueError.
         """
         try:
             return axis.index2value(i)
         except ValueError:
             if i > axis.high_index:
-                return axis.high_value + axis.scale
+                return axis.high_value + abs(axis.scale)
             elif i < axis.low_index:
                 return axis.low_value
             else:
@@ -566,7 +566,7 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
     def _set_axes(self, axes):
         super(ResizableDraggableWidgetBase, self)._set_axes(axes)
         if self.axes:
-            self._size = np.array([ax.scale for ax in self.axes])
+            self._size = np.array([abs(ax.scale) for ax in self.axes])
 
     def _get_size(self):
         """Getter for 'size' property. Returns the size as a tuple (to prevent
@@ -580,9 +580,9 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
         Calls _size_changed to handle size change, if the value has changed.
 
         """
-        value = np.minimum(value, [ax.size * ax.scale for ax in self.axes])
+        value = np.minimum(value, [ax.size * abs(ax.scale) for ax in self.axes])
         value = np.maximum(value,
-                           self.size_step * [ax.scale for ax in self.axes])
+                           self.size_step * [abs(ax.scale) for ax in self.axes])
         if self.snap_size:
             value = self._do_snap_size(value)
         if np.any(self._size != value):
@@ -620,13 +620,13 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
         """Increment all sizes by 1. Applied via 'size' property.
         """
         self.size = np.array(self.size) + \
-            self.size_step * np.array([a.scale for a in self.axes])
+            self.size_step * np.array([abs(a.scale) for a in self.axes])
 
     def decrease_size(self):
         """Decrement all sizes by 1. Applied via 'size' property.
         """
         self.size = np.array(self.size) - \
-            self.size_step * np.array([a.scale for a in self.axes])
+            self.size_step * np.array([abs(a.scale) for a in self.axes])
 
     def _size_changed(self):
         """Triggers resize and changed events, and updates the patch.
@@ -641,7 +641,7 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
         """
         s = list()
         for i in range(len(self.axes)):
-            s.append(int(round(self._size[i] / self.axes[i].scale)))
+            s.append(int(round(self._size[i] / abs(self.axes[i].scale))))
         return np.array(s)
 
     def set_size_in_indices(self, value):
@@ -650,7 +650,7 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
         """
         s = list()
         for i in range(len(self.axes)):
-            s.append(int(round(value[i] * self.axes[i].scale)))
+            s.append(int(round(value[i] * abs(self.axes[i].scale))))
         self.size = s   # Use property to get full processing
 
     def get_centre(self):
@@ -892,7 +892,7 @@ class ResizersMixin(object):
         """
         invtrans = self.ax.transData.inverted()
         if self.resize_pixel_size is None:
-            rsize = [ax.scale for ax in self.axes]
+            rsize = [abs(ax.scale) for ax in self.axes]
         else:
             rsize = np.abs(invtrans.transform(self.resize_pixel_size) -
                            invtrans.transform((0, 0)))

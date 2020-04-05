@@ -37,14 +37,14 @@ class CircleWidget(Widget2DBase, ResizersMixin):
     def _set_axes(self, axes):
         super(CircleWidget, self)._set_axes(axes)
         if self.axes:
-            self._size[0] = (0.5 + 1e-8) * self.axes[0].scale
+            self._size[0] = (0.5 + 1e-8) * abs(self.axes[0].scale)
             if len(self.axes) > 1:
                 self._size[1] = 0
 
     def _do_snap_size(self, value=None):
         # Snap to odd diameters = ?.5 radius
         value = np.array(value) if value is not None else self._size
-        snap_offset = self.size_snap_offset * self.axes[0].scale
+        snap_offset = self.size_snap_offset * abs(self.axes[0].scale)
         snap_spacing = self.axes[0].scale * self.size_step
         for i in range(2):
             value[i] = max(0, (round((value[i] - snap_offset) / snap_spacing) *
@@ -59,7 +59,7 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         value = np.minimum(value,
                            [0.5 * ax.size * ax.scale for ax in self.axes])
         # Changed from base:
-        min_sizes = np.array(((0.5 + 1e-8) * self.axes[0].scale, 0))
+        min_sizes = np.array(((0.5 + 1e-8) * abs(self.axes[0].scale), 0))
         value = np.maximum(value, min_sizes)
         if value[0] < value[1]:
             self._set_size(value[::-1])
@@ -75,9 +75,9 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         """
         s = np.array(self.size)
         if self.size[1] > 0:
-            s += self.size_step * self.axes[0].scale
+            s += self.size_step * abs(self.axes[0].scale)
         else:
-            s[0] += self.size_step * self.axes[0].scale
+            s[0] += self.size_step * abs(self.axes[0].scale)
         self.size = s
 
     def decrease_size(self):
@@ -85,9 +85,9 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         """
         s = np.array(self.size)
         if self.size[1] > 0:
-            s -= self.size_step * self.axes[0].scale
+            s -= self.size_step * abs(self.axes[0].scale)
         else:
-            s[0] -= self.size_step * self.axes[0].scale
+            s[0] -= self.size_step * abs(self.axes[0].scale)
         self.size = s
 
     def get_centre(self):

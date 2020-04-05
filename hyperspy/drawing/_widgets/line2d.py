@@ -86,7 +86,7 @@ class Line2DWidget(ResizableDraggableWidgetBase):
     Notes
     -----
     The 'position' is now a 2D tuple: tuple(tuple(x1, x2), tuple(y1, y2))
-    
+
     Notes
     -----
     The 'size' property corresponds to line width, so it has a len() of only
@@ -119,7 +119,7 @@ class Line2DWidget(ResizableDraggableWidgetBase):
                 self.axes = self.axes_manager.navigation_axes[0:2]
             else:
                 self.axes = self.axes_manager.signal_axes[0:2]
-        value = self.axes[0].scale if self.axes_manager else 1
+        value = abs(self.axes[0].scale) if self.axes_manager else 1
         # [[x0, y0], [x1, y1]]
         self._pos = np.array([[0, 0], [value, 0]])
 
@@ -134,7 +134,7 @@ class Line2DWidget(ResizableDraggableWidgetBase):
             value = 0
         elif value:
             # The size must not be smaller than the scale
-            value = np.maximum(value, self.axes[0].scale)
+            value = np.maximum(value, abs(self.axes[0].scale))
             if self.snap_size:
                 value = self._do_snap_size(value)[0]
         if self._size[0] != value:
@@ -184,7 +184,7 @@ class Line2DWidget(ResizableDraggableWidgetBase):
         return np.array([ret1, ret2])
 
     def _set_snap_size(self, value):
-        if value and self.axes[0].scale != self.axes[1].scale:
+        if value and abs(self.axes[0].scale) != abs(self.axes[1].scale):
             _logger.warning('Snapping the width of the line is not supported '
                             'for axes with different scale.')
             return
@@ -196,7 +196,7 @@ class Line2DWidget(ResizableDraggableWidgetBase):
         if hasattr(value, '__len__'):
             value = value[0]
         ax = self.axes[0]  # take one axis, different axis scale not supported
-        value = round(value / ax.scale) * ax.scale
+        value = round(value / abs(ax.scale)) * abs(ax.scale)
 
         # must return an array to be consistent with the widget API
         return np.array([value])

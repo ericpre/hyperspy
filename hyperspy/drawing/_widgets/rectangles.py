@@ -267,8 +267,8 @@ class RectangleWidget(SquareWidget, ResizersMixin):
     # --- Internals that trigger events ---
 
     def _set_size(self, value):
-        value = np.minimum(value, [ax.size * ax.scale for ax in self.axes])
-        value = np.maximum(value, [ax.scale for ax in self.axes])
+        value = np.minimum(value, [ax.size * abs(ax.scale) for ax in self.axes])
+        value = np.maximum(value, [abs(ax.scale) for ax in self.axes])
         if np.any(self._size != value):
             old = self._size
             self._size = value
@@ -290,20 +290,20 @@ class RectangleWidget(SquareWidget, ResizersMixin):
 
     def _increase_xsize(self):
         self._set_a_size(0, self._size[0] +
-                         self.axes[0].scale * self.size_step)
+                         abs(self.axes[0].scale) * self.size_step)
 
     def _decrease_xsize(self):
-        new_s = self._size[0] - self.axes[0].scale * self.size_step
-        new_s = max(new_s, self.axes[0].scale)
+        new_s = self._size[0] - abs(self.axes[0].scale) * self.size_step
+        new_s = max(new_s, abs(self.axes[0].scale))
         self._set_a_size(0, new_s)
 
     def _increase_ysize(self):
         self._set_a_size(1, self._size[1] +
-                         self.axes[1].scale * self.size_step)
+                         abs(self.axes[1].scale) * self.size_step)
 
     def _decrease_ysize(self):
-        new_s = self._size[1] - self.axes[1].scale * self.size_step
-        new_s = max(new_s, self.axes[1].scale)
+        new_s = self._size[1] - abs(self.axes[1].scale) * self.size_step
+        new_s = max(new_s, abs(self.axes[1].scale))
         self._set_a_size(1, new_s)
 
     def on_key_press(self, event):
@@ -326,7 +326,7 @@ class RectangleWidget(SquareWidget, ResizersMixin):
         deviates from the 'position', as 'position' correspond to the center
         value of the pixel. Here, xy corresponds to the top left of the pixel.
         """
-        offset = [a.scale for a in self.axes]
+        offset = [abs(a.scale) for a in self.axes]
         return self._pos - 0.5 * np.array(offset)
 
     def _update_patch_position(self):
@@ -357,8 +357,8 @@ class RectangleWidget(SquareWidget, ResizersMixin):
         yaxis = self.axes[1]
 
         # Make sure widget size is not larger than axes
-        self._size[0] = min(self._size[0], xaxis.size * xaxis.scale)
-        self._size[1] = min(self._size[1], yaxis.size * yaxis.scale)
+        self._size[0] = min(self._size[0], xaxis.size * abs(xaxis.scale))
+        self._size[1] = min(self._size[1], yaxis.size * abs(yaxis.scale))
 
         # Make sure x1/y1 is within bounds
         if x1 is None:

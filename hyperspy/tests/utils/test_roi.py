@@ -44,11 +44,14 @@ class TestROIs():
             for y in [-1., -t, t, 1]:
                 self.r.append(Line2DROI(x1=0., x2=x, y1=0., y2=y))
 
-    def test_point1d_spectrum(self):
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_point1d_spectrum(self, negative_scale):
         s = self.s_s
         r = Point1DROI(35)
         sr = r(s)
-        scale = s.axes_manager[0].scale
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
+        scale = abs(s.axes_manager[0].scale)
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[1:])
         np.testing.assert_equal(
@@ -104,11 +107,14 @@ class TestROIs():
         r = Point2DROI(1, 2)
         assert tuple(r) == (1, 2)
 
-    def test_span_spectrum_nav(self):
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_span_spectrum_nav(self, negative_scale):
         s = self.s_s
         r = SpanROI(15, 30)
         sr = r(s)
-        scale = s.axes_manager[0].scale
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
+        scale = abs(s.axes_manager[0].scale)
         n = (30 - 15) / scale
         assert (sr.axes_manager.navigation_shape ==
                 (n, ) + s.axes_manager.navigation_shape[1:])
@@ -170,13 +176,16 @@ class TestROIs():
         np.testing.assert_equal(sr.data, s.data[...,
                                                 int(1 / scale):int(3 / scale)])
 
-    def test_rect_image(self):
+    @pytest.mark.parametrize('negative_scale', [False, False])
+    def test_rect_image(self, negative_scale):
         s = self.s_i
         s.axes_manager[0].scale = 0.2
         s.axes_manager[1].scale = 0.8
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
         r = RectangularROI(left=2.3, top=5.6, right=3.5, bottom=12.2)
         sr = r(s)
-        scale0 = s.axes_manager[0].scale
+        scale0 = abs(s.axes_manager[0].scale)
         scale1 = s.axes_manager[1].scale
         n = ((int(round(2.3 / scale0)), int(round(3.5 / scale0)),),
              (int(round(5.6 / scale1)), int(round(12.2 / scale1)),))
@@ -189,14 +198,14 @@ class TestROIs():
         r = RectangularROI(left=2.3, top=5.6, right=3.5, bottom=12.2)
         assert tuple(r) == (2.3, 3.5, 5.6, 12.2)
 
-    def test_rect_image_boundary_roi(self):
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_rect_image_boundary_roi(self, negative_scale):
         s = self.s_i
         r = RectangularROI(0, 0, 100, 100)
         # Test adding roi to plot
         s.plot()
         w = r.add_widget(s)
         np.testing.assert_equal(r(s).data, s.data)
-
         # width and height should range between 1 and axes shape
         with pytest.raises(ValueError):
             w.width = 101
@@ -205,12 +214,15 @@ class TestROIs():
 
         s.axes_manager[0].scale = 0.2
         s.axes_manager[1].scale = 0.8
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
         r2 = RectangularROI(0, 0, 20, 80)
         # Test adding roi to plot
         s.plot()
         w2 = r2.add_widget(s)
         np.testing.assert_equal(r2(s).data, s.data)
 
+        print('here')
         w2.set_bounds(x=-10)  # below min x
         assert w2._pos[0] == 0
         w2.set_bounds(width=0.1)  # below min width
