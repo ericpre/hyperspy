@@ -47,15 +47,17 @@ class TestROIs():
     @pytest.mark.parametrize('negative_scale', [False, True])
     def test_point1d_spectrum(self, negative_scale):
         s = self.s_s
-        r = Point1DROI(35)
-        sr = r(s)
+        x = 35
         if negative_scale:
             s.axes_manager[0].scale *= -1
+            x *= -1
+        r = Point1DROI(x)
+        sr = r(s)
         scale = abs(s.axes_manager[0].scale)
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[1:])
         np.testing.assert_equal(
-            sr.data, s.data[:, int(35 / scale), ...])
+            sr.data, s.data[:, int(abs(x) / scale), ...])
 
     def test_point1d_spectrum_ronded_coord(self):
         s = self.s_s
@@ -83,15 +85,20 @@ class TestROIs():
         r = Point1DROI(35)
         assert (35,) == tuple(r)
 
-    def test_point2d_image(self):
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_point2d_image(self, negative_scale):
         s = self.s_i
-        r = Point2DROI(35, 40)
+        x, y = 35, 40
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
+            x *= -1
+        r = Point2DROI(x, y)
+        scale = abs(s.axes_manager[0].scale)
         sr = r(s)
-        scale = s.axes_manager[0].scale
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[2:])
         np.testing.assert_equal(
-            sr.data, s.data[int(40 / scale), int(35 / scale), ...])
+            sr.data, s.data[int(y/ scale), int(abs(x) / scale), ...])
 
     def test_point2d_image_sig(self):
         s = self.s_i
@@ -107,19 +114,22 @@ class TestROIs():
         r = Point2DROI(1, 2)
         assert tuple(r) == (1, 2)
 
-    @pytest.mark.parametrize('negative_scale', [False, True])
+    @pytest.mark.parametrize('negative_scale', [False, False])
     def test_span_spectrum_nav(self, negative_scale):
         s = self.s_s
-        r = SpanROI(15, 30)
-        sr = r(s)
+        x1, x2 = 15, 30
         if negative_scale:
             s.axes_manager[0].scale *= -1
+            x1 *= -1
+            x2 *= -1
+        r = SpanROI(*sorted([x1, x2]))
+        sr = r(s)
         scale = abs(s.axes_manager[0].scale)
-        n = (30 - 15) / scale
+        n = (abs(x2) - abs(x1)) / scale
         assert (sr.axes_manager.navigation_shape ==
                 (n, ) + s.axes_manager.navigation_shape[1:])
         np.testing.assert_equal(
-            sr.data, s.data[:, int(15 / scale):int(30 // scale), ...])
+            sr.data, s.data[:, int(abs(x1) / scale):int(abs(x2) // scale), ...])
 
     def test_span_spectrum_nav_boundary_roi(self):
         s = Signal1D(np.random.rand(60, 4))
@@ -181,13 +191,16 @@ class TestROIs():
         s = self.s_i
         s.axes_manager[0].scale = 0.2
         s.axes_manager[1].scale = 0.8
+        left, right = 2.3, 3.5
         if negative_scale:
             s.axes_manager[0].scale *= -1
-        r = RectangularROI(left=2.3, top=5.6, right=3.5, bottom=12.2)
+            left *= -1
+            right *= -1
+        r = RectangularROI(left=left, top=5.6, right=right, bottom=12.2)
         sr = r(s)
         scale0 = abs(s.axes_manager[0].scale)
         scale1 = s.axes_manager[1].scale
-        n = ((int(round(2.3 / scale0)), int(round(3.5 / scale0)),),
+        n = ((int(round(abs(left) / scale0)), int(round(abs(right)/ scale0)),),
              (int(round(5.6 / scale1)), int(round(12.2 / scale1)),))
         assert (sr.axes_manager.navigation_shape ==
                 (n[0][1] - n[0][0], n[1][1] - n[1][0]))
@@ -222,9 +235,9 @@ class TestROIs():
         w2 = r2.add_widget(s)
         np.testing.assert_equal(r2(s).data, s.data)
 
-        print('here')
-        w2.set_bounds(x=-10)  # below min x
-        assert w2._pos[0] == 0
+        w2.set_bounds(x=-100)  # below min x
+        expected_value = -19.8 if negative_scale else 0
+        assert w2._pos[0] == expected_value
         w2.set_bounds(width=0.1)  # below min width
         assert w2._size[0] == 0.2
         w2.set_bounds(width=30.0)  # above max width
@@ -249,7 +262,8 @@ class TestROIs():
 
         # the combination of the two is not valid
         w2.set_bounds(x=10, width=20)
-        assert w2._pos[0] == 0.0
+        expected_value = -19.8 if negative_scale else 0
+        assert w2._pos[0] == expected_value
         assert w2._size[0] == 20.0
 
         # the combination of the two is not valid
@@ -259,12 +273,33 @@ class TestROIs():
 
         w2.set_bounds(x=10)
         w2.set_bounds(width=20)
-        assert w2._pos[0] == 0
+        expected_value = -19.8 if negative_scale else 0
+        assert w2._pos[0] == expected_value
         assert w2._size[0] == 20
         w2.set_bounds(y=10)
         w2.set_bounds(height=79.2)
         assert w2._pos[1] == 0.0
         assert w2._size[1] == 79.2
+
+    def test_circle_negative_scale(self):
+        s = self.s_s
+        s.axes_manager[0].scale = -0.2
+        s.axes_manager[1].scale = 0.2
+        cx, cy = -2.3, 3.5
+        r = CircleROI(cx, cy, 1)
+        sr = r(s)
+        scale = abs(s.axes_manager[0].scale)
+        cx_index = s.axes_manager[0].value2index(cx)
+        cy_index = s.axes_manager[1].value2index(cy)
+        r_index = int(round(r.r / abs(scale)))
+        n = ((cx_index - r_index, cx_index + r_index),
+             (cy_index - r_index, cy_index + r_index))
+        # TODO: sr = r(s) with negative axis
+        # assert (sr.axes_manager.navigation_shape ==
+        #         (n[0][1] - n[0][0], n[1][1] - n[1][0]))
+        # np.testing.assert_equal(
+        #     sr.data, s.data[n[1][0]:n[1][1], n[0][0]:n[0][1], ...])
+
 
     def test_circle_spec(self):
         s = self.s_s

@@ -30,7 +30,7 @@ class WidgetBase(object):
 
     """Base class for interactive widgets/patches. A widget creates and
     maintains one or more matplotlib patches, and manages the interaction code
-    so that the user can maniuplate it on the fly.
+    so that the user can manipulate it on the fly.
 
     This base class implements functionality witch is common to all such
     widgets, mainly the code that manages the patch, axes management, and
@@ -43,6 +43,20 @@ class WidgetBase(object):
     It should also make sure to fill the 'axes' attribute as early as
     possible (but after the base class init), so that it is available when
     needed.
+
+    Attributes
+    ----------
+    axes_manager: :py:class:`~hyperspy.axes.AxesManager`
+        The axes_manager of the signal the widget is added on.
+    _axes : list of :py:class:`~hyperspy.axes.DataAxis`
+        The list of ``DataAxis`` corresponding to the axis onto which the
+        widget is added.
+    _size : numpy.ndarray
+        The size of the widgets in values. Its shape is the same as the
+        dimension of the widget. It is always positive even for axes with
+        negative scale.
+    _pos : numpy.ndarray
+        The position of the widget in values.
     """
 
     def __init__(self, axes_manager=None, color='red', alpha=1.0, **kwargs):
@@ -52,7 +66,7 @@ class WidgetBase(object):
         self.picked = False
         self.selected = False
         self._selected_artist = None
-        self._size = 1.
+        self._size = np.array([1])
         self._pos = np.array([0.])
         self.__is_on = True
         self.background = None

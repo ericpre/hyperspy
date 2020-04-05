@@ -57,7 +57,7 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         """
         # Override so that r_inner can be 0
         value = np.minimum(value,
-                           [0.5 * ax.size * ax.scale for ax in self.axes])
+                           [0.5 * ax.size * abs(ax.scale) for ax in self.axes])
         # Changed from base:
         min_sizes = np.array(((0.5 + 1e-8) * abs(self.axes[0].scale), 0))
         value = np.maximum(value, min_sizes)
@@ -129,17 +129,17 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         """Constrict the position within bounds.
         """
         value = (min(value[0], self.axes[0].high_value - self._size[0] +
-                     (0.5 + 1e-8) * self.axes[0].scale),
+                     (0.5 + 1e-8) * abs(self.axes[0].scale)),
                  min(value[1], self.axes[1].high_value - self._size[0] +
-                     (0.5 + 1e-8) * self.axes[1].scale))
+                     (0.5 + 1e-8) * abs(self.axes[1].scale)))
         value = (max(value[0], self.axes[0].low_value + self._size[0] -
-                     (0.5 + 1e-8) * self.axes[0].scale),
+                     (0.5 + 1e-8) * abs(self.axes[0].scale)),
                  max(value[1], self.axes[1].low_value + self._size[0] -
-                     (0.5 + 1e-8) * self.axes[1].scale))
+                     (0.5 + 1e-8) * abs(self.axes[1].scale)))
         return super(CircleWidget, self)._validate_pos(value)
 
     def get_size_in_indices(self):
-        return np.array(self._size / self.axes[0].scale)
+        return np.array(self._size / abs(self.axes[0].scale))
 
     def _update_patch_position(self):
         if self.is_on() and self.patch:
