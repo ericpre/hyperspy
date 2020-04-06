@@ -26,7 +26,7 @@ from hyperspy.drawing.utils import on_figure_window_close
 from hyperspy.events import Events, Event
 
 
-class WidgetBase(object):
+class WidgetBase:
 
     """Base class for interactive widgets/patches. A widget creates and
     maintains one or more matplotlib patches, and manages the interaction code
@@ -36,9 +36,10 @@ class WidgetBase(object):
     widgets, mainly the code that manages the patch, axes management, and
     sets up common events ('changed' and 'closed').
 
-    Any inherting subclasses must implement the following methods:
-        _set_patch(self)
-        _on_navigate(obj, name, old, new)  # Only for widgets that can navigate
+    Any inherting subclasses must implement the following methods
+
+    * _set_patch(self)
+    * _on_navigate(obj, name, old, new)  # Only for widgets that can navigate
 
     It should also make sure to fill the 'axes' attribute as early as
     possible (but after the base class init), so that it is available when
@@ -48,15 +49,58 @@ class WidgetBase(object):
     ----------
     axes_manager: :py:class:`~hyperspy.axes.AxesManager`
         The axes_manager of the signal the widget is added on.
-    _axes : list of :py:class:`~hyperspy.axes.DataAxis`
-        The list of ``DataAxis`` corresponding to the axis onto which the
-        widget is added.
+    ax : :py:class:`~matplotlib.axes._subplots.AxesSubplot`
+        The matplotlib axes on which the widget is drawn.
+    picked : bool
+        True if the widget is picked by a mouse event. False otherwise.
+    selected : bool
+        True if the widget is currently being selected. False otherwise
+    patch : subclass of :py:class:`~matplotlib.patches.Patch`
+        Matplotlib patch displayed on the figure.
+    cids : list of matploltib event
+        List of matplotlib event connected to the figure canvas.
+    blit : bool
+        True if the widget supports blit. False otherwise.
+    events : :py:class:`~hyperspy.events.Events`
+        Events container of the widget.
     _size : numpy.ndarray
         The size of the widgets in values. Its shape is the same as the
         dimension of the widget. It is always positive even for axes with
         negative scale.
     _pos : numpy.ndarray
         The position of the widget in values.
+
+    Methods
+    -------
+    set_on
+        Change the on state of the widget. If turning off, all patches will
+        be removed from the matplotlib axes and the widget will disconnect from
+        all events. If turning on, the patch(es) will be added to the
+        matplotlib axes, and the widget will connect to its default events.
+    set_mpl_ax
+        Set the matplotlib Axes that the widget will draw to. If the widget
+        on state is True, it will also add the patch to the Axes, and connect
+        to its default events.
+    select
+        Cause this widget to be the selected widget in its MPL axes. This
+        assumes that the widget has its patch added to the MPL axes.
+    connect
+        Connect to the matplotlib Axes' events.
+    disconnect
+        Disconnect from all events (both matplotlib and navigation).
+    connect_navigate
+        Connect to the axes_manager such that changes in the widget or in
+        the axes_manager are reflected in the other.
+    disconnect_navigate
+        Disconnect a previous naivgation connection.
+    close
+        Set the on state to off (removes patch and disconnects), and trigger
+        events.closed.
+    draw_patch
+        Update the patch drawing.
+    onpick
+        Callback for MPL pick event.
+
     """
 
     def __init__(self, axes_manager=None, color='red', alpha=1.0, **kwargs):
@@ -82,8 +126,8 @@ class WidgetBase(object):
             The event triggers after the internal state of the widget has been
             updated.
 
-            Arguments:
-            ----------
+            Arguments
+            ---------
                 widget:
                     The widget that changed
             """, arguments=['obj'])
@@ -92,8 +136,8 @@ class WidgetBase(object):
 
             The event triggers after the widget has already been closed.
 
-            Arguments:
-            ----------
+            Arguments
+            ---------
                 widget:
                     The widget that closed
             """, arguments=['obj'])
@@ -101,6 +145,9 @@ class WidgetBase(object):
         super(WidgetBase, self).__init__(**kwargs)
 
     def _get_axes(self):
+        """The list of :py:class:`~hyperspy.axes.DataAxis` corresponding to
+        the axis onto which the widget is added.
+        """
         return self._axes
 
     def _set_axes(self, axes):
@@ -112,6 +159,7 @@ class WidgetBase(object):
     axes = property(lambda s: s._get_axes(),
                     lambda s, v: s._set_axes(v))
 
+    @property
     def is_on(self):
         """Determines if the widget is set to draw if valid (turned on).
         """
@@ -124,7 +172,7 @@ class WidgetBase(object):
         matplotlib axes, and the widget will connect to its default events.
         """
         did_something = False
-        if value is not self.is_on() and self.ax is not None:
+        if value is not self.is_on and self.ax is not None:
             did_something = True
             if value is True:
                 self._add_patch_to(self.ax)
@@ -149,6 +197,8 @@ class WidgetBase(object):
 
     @property
     def color(self):
+        """Color of the matplotlib patch.
+        """
         return self._color
 
     @color.setter
@@ -159,6 +209,9 @@ class WidgetBase(object):
 
     @property
     def alpha(self):
+        """ Transparence of the matplotlib patch. The value needs to be in
+        range [0, 1].
+        """
         return self._alpha
 
     @alpha.setter
@@ -309,7 +362,7 @@ class WidgetBase(object):
                 raise
 
     def __str__(self):
-        return "{} with id {}".format(self.__class__.__name__, id(self))
+        return f"{self.__class__.__name__} with id {id(self)}"
 
 
 class DraggableWidgetBase(WidgetBase):
@@ -322,9 +375,11 @@ class DraggableWidgetBase(WidgetBase):
     can be controlled by the property `snap_position`.
 
     Any inheritors must override these methods:
-        _onmousemove(self, event)
-        _update_patch_position(self)
-        _set_patch(self)
+
+    * _onmousemove(self, event)
+    * _update_patch_position(self)
+    * _set_patch(self)
+
     """
 
     def __init__(self, axes_manager, **kwargs):
@@ -472,7 +527,8 @@ class DraggableWidgetBase(WidgetBase):
             self.position = p    # Use property to trigger events
 
     def onpick(self, event):
-        # Callback for MPL pick event
+        """Callback for MPL pick event.
+        """
         self.picked = (event.artist in self.patch)
         self._selected_artist = event.artist
         if hasattr(super(DraggableWidgetBase, self), 'onpick'):
@@ -548,10 +604,11 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
     only one 'changed' event is fired for a combined move and resize.
 
     Any inheritors must override these methods:
-        _update_patch_position(self)
-        _update_patch_size(self)
-        _update_patch_geometry(self)
-        _set_patch(self)
+
+    * _update_patch_position(self)
+    * _update_patch_size(self)
+    * _update_patch_geometry(self)
+    * _set_patch(self)
     """
 
     def __init__(self, axes_manager, **kwargs):
