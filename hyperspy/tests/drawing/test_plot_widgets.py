@@ -30,7 +30,7 @@ default_tol = 2.0
 style_pytest_mpl = 'default'
 
 
-class TestPlotLine2DWidget():
+class TestPlotLine2DWidget:
 
     def setup_method(self, method):
         # Create test image 100x100 pixels:
@@ -161,7 +161,7 @@ class TestPlotLine2DWidget():
         return self.im._plot.signal_plot.figure
 
 
-class TestPlotRangeWidget():
+class TestPlotRangeWidget:
 
     def setup_method(self, method):
         self.s = Signal1D(np.arange(50))
@@ -252,3 +252,49 @@ class TestPlotRangeWidget():
         ax.figure.canvas.draw_idle()
 
         return self.s._plot.signal_plot.figure
+
+class TestPlotRectange:
+
+    def setup_method(self, method):
+        # Create test image 100x100 pixels:
+        self.im = Signal2D(np.arange(100).reshape([10, 10]))
+        self.im.axes_manager[0].scale = 1.2
+        self.im.axes_manager[1].scale = 1.2
+        self.rect = widgets.RectangleWidget(self.im.axes_manager)
+
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_position(self, negative_scale):
+        sign = 1
+        if negative_scale:
+            self.im.axes_manager[0].scale *= -1
+            sign = -1
+        rect = widgets.RectangleWidget(self.im.axes_manager)
+        rect.size = (4.8, 6.0)
+        assert rect.size == (4.8, 6.0)
+
+        rect.position = (sign * 6, 1.2)
+        assert rect.position == (sign * 6, 1.2)
+
+    @pytest.mark.parametrize('negative_scale', [False, True])
+    def test_increase_decrease(self, negative_scale):
+        if negative_scale:
+            self.im.axes_manager[0].scale *= -1
+        rect = widgets.RectangleWidget(self.im.axes_manager)
+        rect.increase_size()
+        assert rect.size == (2.4, 2.4)
+        rect.decrease_size()
+        assert rect.size == (1.2, 1.2)
+
+    def test_set_bounds_negative_scale(self):
+        self.im.axes_manager[0].scale *= -1
+        rect = widgets.RectangleWidget(self.im.axes_manager)
+        scale_x = self.im.axes_manager[0].scale
+        scale_y = self.im.axes_manager[1].scale
+        size = self.im.axes_manager[0].size - 1
+        # check all 4 corners
+        for pos in [(0, 0), (scale_x * size, 0),
+                    (0, scale_y * size), (scale_x * size, scale_y * size)]:
+            rect.position = pos
+            assert rect.position == pos
+
+

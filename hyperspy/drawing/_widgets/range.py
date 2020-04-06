@@ -172,8 +172,8 @@ class RangeWidget(ResizableDraggableWidgetBase):
         def warn(obj, parameter, value):
             global already_warn_out_of_range
             if not already_warn_out_of_range:
-                _logger.info('{}: {} is out of range. It is therefore set '
-                             'to the value of {}'.format(obj, parameter, value))
+                _logger.info(f'{obj}: {parameter} is out of range. It is '
+                             'therefore set to the value of {value}')
                 already_warn_out_of_range = True
 
         x, w = self._parse_bounds_args(args, kwargs)
@@ -204,7 +204,7 @@ class RangeWidget(ResizableDraggableWidgetBase):
 
         # if we are in range again, reset `already_warn_out_of_range` to False
         if in_range == 2 and already_warn_out_of_range:
-            _logger.info('{} back in range.'.format(self.__class__.__name__))
+            _logger.info(f'{self} back in range.')
             already_warn_out_of_range = False
 
         old_position, old_size = self.position, self.size
