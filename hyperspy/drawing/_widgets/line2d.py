@@ -20,7 +20,7 @@
 import numpy as np
 import logging
 
-from hyperspy.drawing.widgets import ResizableDraggableWidgetBase
+from hyperspy.drawing.widget import ResizableDraggableWidgetBase
 
 
 _logger = logging.getLogger(__name__)

@@ -22,7 +22,7 @@ from matplotlib.widgets import SpanSelector
 import inspect
 import logging
 
-from hyperspy.drawing.widgets import ResizableDraggableWidgetBase
+from hyperspy.drawing.widget import ResizableDraggableWidgetBase
 from hyperspy.events import Events, Event
 
 

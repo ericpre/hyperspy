@@ -16,7 +16,7 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
-from hyperspy.drawing.widgets import Widget1DBase
+from hyperspy.drawing.widget import Widget1DBase
 
 
 class VerticalLineWidget(Widget1DBase):
