@@ -193,11 +193,11 @@ class WidgetBase(object):
         if ax is self.ax:
             return  # Do nothing
         # Disconnect from previous axes if set
-        if self.ax is not None and self.is_on():
+        if self.ax is not None and self.is_on:
             self.disconnect()
         self.ax = ax
         canvas = ax.figure.canvas
-        if self.is_on() is True:
+        if self.is_on:
             self._add_patch_to(ax)
             self.connect(ax)
             canvas.draw_idle()
@@ -208,7 +208,7 @@ class WidgetBase(object):
         Cause this widget to be the selected widget in its MPL axes. This
         assumes that the widget has its patch added to the MPL axes.
         """
-        if not self.patch or not self.is_on() or not self.ax:
+        if not self.patch or not self.is_on or not self.ax:
             return
 
         canvas = self.ax.figure.canvas
@@ -808,7 +808,7 @@ class Widget2DBase(ResizableDraggableWidgetBase):
         return (xy[0], xy[1], xs, ys)        # x,y,w,h
 
     def _update_patch_position(self):
-        if self.is_on() and self.patch:
+        if self.is_on and self.patch:
             self.patch[0].set_xy(self._get_patch_xy())
             self.draw_patch()
 
@@ -816,7 +816,7 @@ class Widget2DBase(ResizableDraggableWidgetBase):
         self._update_patch_geometry()
 
     def _update_patch_geometry(self):
-        if self.is_on() and self.patch:
+        if self.is_on and self.patch:
             self.patch[0].set_bounds(*self._get_patch_bounds())
             self.draw_patch()
 

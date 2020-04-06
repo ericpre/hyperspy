@@ -62,7 +62,7 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self.span = None
 
     def set_on(self, value):
-        if value is not self.is_on() and self.ax is not None:
+        if value is not self.is_on and self.ax is not None:
             if value is True:
                 self._add_patch_to(self.ax)
                 self.connect(self.ax)
@@ -219,7 +219,7 @@ class RangeWidget(ResizableDraggableWidgetBase):
         self._update_patch_geometry()
 
     def _update_patch_geometry(self):
-        if self.is_on() and self.span is not None:
+        if self.is_on and self.span is not None:
             self.span.range = self._get_range()
 
     def disconnect(self):
@@ -577,7 +577,7 @@ class ModifiableSpanSelector(SpanSelector):
             return
         x_increment = self._get_mouse_position(event) - self.pressv
         if self.step_ax is not None:
-            if (self.bounds_check  
+            if (self.bounds_check
                 and self._range[0] <= self.step_ax.low_value
                 and self._get_mouse_position(event) <= self.pressv):
                 return
