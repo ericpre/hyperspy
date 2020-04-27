@@ -798,16 +798,20 @@ class AxesManager(t.HasTraits):
     def _axes_getter(self, y):
         if y in self._axes:
             return y
-        if isinstance(y, str):
+        if isinstance(y, DataAxis):
+            # Get the axes when are dealing with a copy of the current
+            # axes_manager
+            return self._get_axes_in_natural_order()[y.index_in_axes_manager]
+        elif isinstance(y, str):
             axes = list(self._get_axes_in_natural_order())
             while axes:
                 axis = axes.pop()
                 if y == axis.name:
                     return axis
-            raise ValueError("There is no DataAxis named %s" % y)
+            raise ValueError(f'There is no DataAxis named "{y}"')
         elif (isfloat(y.real) and not y.real.is_integer() or
                 isfloat(y.imag) and not y.imag.is_integer()):
-            raise TypeError("axesmanager indices must be integers, "
+            raise TypeError("AxesManager indices must be integers, "
                             "complex integers or strings")
         if y.imag == 0:  # Natural order
             return self._get_axes_in_natural_order()[y]
@@ -820,7 +824,7 @@ class AxesManager(t.HasTraits):
         elif y.imag == 2:  # Signal natural order
             return self.signal_axes[int(y.real)]
         else:
-            raise IndexError("axesmanager imaginary part of complex indices "
+            raise IndexError("AxesManager imaginary part of complex indices "
                              "must be 0, 1, 2 or 3")
 
     def __getslice__(self, i=None, j=None):

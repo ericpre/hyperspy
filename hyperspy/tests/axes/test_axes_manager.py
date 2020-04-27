@@ -54,7 +54,8 @@ class TestAxesManager:
              'size': 5,
              'units': 'dd'}]
 
-        self.am = AxesManager(axes_list)
+        am = AxesManager(axes_list)
+        self.am = am
 
     def test_reprs(self):
         repr(self.am)
@@ -79,6 +80,13 @@ class TestAxesManager:
         assert am2[2].offset != am[2].offset
         assert am2[3].size != am[3].size
 
+    def test_getter(self):
+        am = self.am
+        am2 = self.am.deepcopy()
+        assert am2[am[0]].name == am[0].name
+
+    def get_getter_non_valid(self):
+        pass
 
 class TestAxesManagerScaleOffset:
 
