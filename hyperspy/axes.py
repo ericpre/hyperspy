@@ -25,7 +25,6 @@ import traits.api as t
 from traits.trait_errors import TraitError
 import pint
 import logging
-import itertools
 
 from hyperspy.events import Events, Event
 from hyperspy.misc.utils import isiterable, ordinal
@@ -431,7 +430,7 @@ class DataAxis(t.HasTraits, UnitConversion):
 
         my_slice = self._get_array_slices(slice_)
 
-        start, stop, step = my_slice.start, my_slice.stop, my_slice.step
+        start, _, step = my_slice.start, my_slice.stop, my_slice.step
 
         if start is None:
             if step is None or step > 0:
@@ -536,13 +535,13 @@ class DataAxis(t.HasTraits, UnitConversion):
             if np.all(self.size > index) and np.all(index >= 0):
                 return index
             else:
-                raise ValueError("A value is out of the axis limits")
+                raise ValueError(f"The value {value} is out of the axis limits.")
         else:
             index = int(index)
             if self.size > index >= 0:
                 return index
             else:
-                raise ValueError("The value is out of the axis limits")
+                raise ValueError(f"The value {value} is out of the axis limits.")
 
     def index2value(self, index):
         if isinstance(index, da.Array):
@@ -631,9 +630,9 @@ class DataAxis(t.HasTraits, UnitConversion):
         self._set_quantity(value, 'offset')
 
 def serpentine_iter(shape):
-    '''Similar to np.ndindex, but yields indices 
+    '''Similar to np.ndindex, but yields indices
     in serpentine pattern, like snake game
-    
+
     Code by Stackoverflow user Paul Panzer,
     from https://stackoverflow.com/questions/57366966/
     '''
@@ -777,7 +776,7 @@ class AxesManager(t.HasTraits):
         self._update_attributes()
         self._update_trait_handlers()
         self._index = None  # index for the iterpath
-        # Can use serpentine or flyback scan pattern 
+        # Can use serpentine or flyback scan pattern
         # for the axes manager indexing
         self._iterpath = 'flyback'
 
@@ -997,8 +996,8 @@ class AxesManager(t.HasTraits):
                 # for some reason. This is possibly expensive, as it needs
                 # to calculate all previous values first
                 # self._iterpath_generator = itertools.islice(
-                #     serpentine_iter(self._navigation_shape_in_array), 
-                #     self._index, 
+                #     serpentine_iter(self._navigation_shape_in_array),
+                #     self._index,
                 #     None)
                 val = next(self._iterpath_generator)[::-1]
             else:

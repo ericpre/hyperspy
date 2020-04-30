@@ -45,7 +45,7 @@ class CircleWidget(Widget2DBase, ResizersMixin):
         # Snap to odd diameters = ?.5 radius
         value = np.array(value) if value is not None else self._size
         snap_offset = self.size_snap_offset * abs(self.axes[0].scale)
-        snap_spacing = self.axes[0].scale * self.size_step
+        snap_spacing = abs(self.axes[0].scale) * self.size_step
         for i in range(2):
             value[i] = max(0, (round((value[i] - snap_offset) / snap_spacing) *
                                snap_spacing + snap_offset))

@@ -211,14 +211,33 @@ class TestROIs():
         r = RectangularROI(left=2.3, top=5.6, right=3.5, bottom=12.2)
         assert tuple(r) == (2.3, 3.5, 5.6, 12.2)
 
+    def test_rectroi_negative_axis(self):
+        s = self.s_s
+        s.axes_manager[0].scale = -0.2
+        s.axes_manager[0].name = 'negative'
+
+        left, right = -3.5, -2.3
+        r = RectangularROI(left=left, top=5.6, right=right, bottom=12.2)
+        sr = r(s)
+        axis = sr.axes_manager[0]
+        assert axis.offset == -2.2
+        assert axis.scale == -0.2
+        assert axis.size == 7
+
     @pytest.mark.parametrize('negative_scale', [False, True])
     def test_rect_image_boundary_roi(self, negative_scale):
         s = self.s_i
-        r = RectangularROI(0, 0, 100, 100)
+        if negative_scale:
+            s.axes_manager[0].scale *= -1
+            left, right = -100, 0
+        else:
+            left, right = 0, 100
+        r = RectangularROI(left, 0, right, 100)
+        np.testing.assert_equal(r(s).data, s.data)
+
         # Test adding roi to plot
         s.plot()
         w = r.add_widget(s)
-        np.testing.assert_equal(r(s).data, s.data)
         # width and height should range between 1 and axes shape
         with pytest.raises(ValueError):
             w.width = 101
@@ -229,12 +248,15 @@ class TestROIs():
         s.axes_manager[1].scale = 0.8
         if negative_scale:
             s.axes_manager[0].scale *= -1
-        r2 = RectangularROI(0, 0, 20, 80)
+            left, right = -20, 0
+        else:
+            left, right = 0, 20
+        r2 = RectangularROI(left, 0, right, 80)
+        np.testing.assert_equal(r2(s).data, s.data)
+
         # Test adding roi to plot
         s.plot()
         w2 = r2.add_widget(s)
-        np.testing.assert_equal(r2(s).data, s.data)
-
         w2.set_bounds(x=-100)  # below min x
         expected_value = -19.8 if negative_scale else 0
         assert w2._pos[0] == expected_value
@@ -288,18 +310,18 @@ class TestROIs():
         cx, cy = -2.3, 3.5
         r = CircleROI(cx, cy, 1)
         sr = r(s)
-        scale = abs(s.axes_manager[0].scale)
+        scale = s.axes_manager[0].scale
         cx_index = s.axes_manager[0].value2index(cx)
         cy_index = s.axes_manager[1].value2index(cy)
         r_index = int(round(r.r / abs(scale)))
         n = ((cx_index - r_index, cx_index + r_index),
              (cy_index - r_index, cy_index + r_index))
-        # TODO: sr = r(s) with negative axis
-        # assert (sr.axes_manager.navigation_shape ==
-        #         (n[0][1] - n[0][0], n[1][1] - n[1][0]))
-        # np.testing.assert_equal(
-        #     sr.data, s.data[n[1][0]:n[1][1], n[0][0]:n[0][1], ...])
-
+        assert (sr.axes_manager.navigation_shape ==
+                (n[0][1] - n[0][0], n[1][1] - n[1][0]))
+        axis = sr.axes_manager[0]
+        np.testing.assert_allclose(axis.offset, -1.4)
+        assert axis.scale == -0.2
+        assert axis.size == 10
 
     def test_circle_spec(self):
         s = self.s_s

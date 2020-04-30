@@ -108,7 +108,7 @@ class BaseROI(t.HasTraits):
         Utility to get the value ranges that the ROI would select.
 
         If the ROI is point base or is rectangluar in nature, these can be used
-        to slice a signal. Extracted from 
+        to slice a signal. Extracted from
         :py:meth:`~hyperspy.roi.BaseROI._make_slices` to ease implementation
         in inherited ROIs.
         """
@@ -127,25 +127,30 @@ class BaseROI(t.HasTraits):
         slices = []
         for ax in axes_collection:
             if ax in axes:
-                i = axes.index(ax)
+                _ranges = ranges[axes.index(ax)]
+                if ax.scale < 0:
+                    # ROIs, keeps range ordered and with negative scale, we
+                    # need to flip the range
+                    _ranges = _ranges[::-1]
                 try:
-                    ilow = ax.value2index(ranges[i][0])
+                    ilow = ax.value2index(_ranges[0])
                 except ValueError:
-                    if ranges[i][0] < ax.low_value:
+                    if abs(_ranges[0]) < abs(ax.low_value):
                         ilow = ax.low_index
                     else:
                         raise
-                if len(ranges[i]) == 1:
+                if len(_ranges) == 1:
                     slices.append(ilow)
                 else:
                     try:
-                        ihigh = ax.value2index(ranges[i][1])
+                        ihigh = ax.value2index(_ranges[1])
                     except ValueError:
-                        if ranges[i][1] > ax.high_value:
+                        if abs(_ranges[1]) > abs(ax.high_value):
                             ihigh = ax.high_index + 1
                         else:
                             raise
-                    slices.append(slice(ilow, ihigh))
+                    _slice = slice(ilow, ihigh)
+                    slices.append(_slice)
             else:
                 slices.append(slice(None))
         return tuple(slices)
@@ -184,7 +189,6 @@ class BaseROI(t.HasTraits):
         nav_dim = signal.axes_manager.navigation_dimension
         if True in nav_axes:
             if False in nav_axes:
-
                 slicer = signal.inav[slices[:nav_dim]].isig.__getitem__
                 slices = slices[nav_dim:]
             else:
@@ -198,7 +202,7 @@ class BaseROI(t.HasTraits):
         return roi
 
     def _parse_axes(self, axes, axes_manager):
-        """Utility function to parse the 'axes' argument to a list of 
+        """Utility function to parse the 'axes' argument to a list of
         :py:class:`~hyperspy.axes.DataAxis`.
 
         Parameters
@@ -211,7 +215,7 @@ class BaseROI(t.HasTraits):
 
               * :py:class:`~hyperspy.axes.DataAxis`. These will not be checked
                 with signal.axes_manager.
-              * anything that will index the signal 
+              * anything that will index the signal
                 :py:class:`~hyperspy.axes.AxesManager`
             * For any other value, it will check whether the navigation
               space can fit the right number of axis, and use that if it
@@ -349,10 +353,11 @@ class BaseInteractiveROI(BaseROI):
         signal : Signal
             The source signal to slice
         navigation_signal : Signal, None or "same" (default)
-            If not None, it will automatically create a widget on
-            navigation_signal. Passing "same" is identical to passing the same
-            signal to 'signal' and 'navigation_signal', but is less ambigous,
-            and allows "same" to be the default value.
+            If not None and of type Signal, the widget on added to the signal
+            ``navigation_signal`` and the signal ``signal`` will be sliced.
+            Passing "same" is identical to passing the same signal to ``signal``
+            and ``navigation_signal``, but is less ambigous and allows "same"
+            to be the default value.
         out : Signal
             If not None, it will use 'out' as the output instead of returning
             a new Signal.
@@ -548,7 +553,7 @@ class Point1DROI(BasePointROI):
     Example
     -------
 
-    >>> roi = hs.roi.Point1DROI(0.5) 
+    >>> roi = hs.roi.Point1DROI(0.5)
     >>> value, = roi
     >>> print(value)
     0.5
@@ -575,7 +580,6 @@ class Point1DROI(BasePointROI):
     def _get_ranges(self):
         ranges = ((self.value,),)
         return ranges
-
 
     def _set_from_widget(self, widget):
         self.value = widget.position[0]
@@ -627,7 +631,6 @@ class Point2DROI(BasePointROI):
     def __getitem__(self, *args, **kwargs):
         _tuple = (self.x, self.y)
         return _tuple.__getitem__(*args, **kwargs)
-
 
     def is_valid(self):
         return t.Undefined not in (self.x, self.y)
@@ -686,8 +689,6 @@ class SpanROI(BaseInteractiveROI):
         _tuple = (self.left, self.right)
         return _tuple.__getitem__(*args, **kwargs)
 
-
-
     def is_valid(self):
         return (t.Undefined not in (self.left, self.right) and
                 self.right >= self.left)
@@ -740,41 +741,37 @@ class RectangularROI(BaseInteractiveROI):
     the 2D space are stored in the traits 'left', 'right', 'top' and 'bottom'.
     Convenience properties 'x', 'y', 'width' and 'height' are also available,
     but cannot be used for initialization.
+    'left' must be lower than 'right' and 'top' must be lower than 'bottom',
+    since the (0, 0) coordinate is displayed in the top left corner of the
+    figure.
 
-    `RectangularROI` can be used in place of a tuple containing `(left, right, top, bottom)`.
+    `RectangularROI` can be used in place of a tuple containing
+    `(left, top, right, bottom)`.
 
     Example
     -------
 
     >>> roi = hs.roi.RectangularROI(left=0, right=10, top=20, bottom=20.5)
-    >>> left, right, top, bottom = roi
-    >>> print(left, right, top, bottom)
+    >>> left, top, right, bottom = roi
+    >>> print(left, top, right, bottom)
     0 10 20 20.5
     """
-    top, bottom, left, right = (t.CFloat(t.Undefined),) * 4
+    left, top, right, bottom = (t.CFloat(t.Undefined),) * 4
     _ndim = 2
 
     def __init__(self, left, top, right, bottom):
         super(RectangularROI, self).__init__()
         self._bounds_check = True   # Use reponsibly!
-        self.top, self.bottom, self.left, self.right = top, bottom, left, right
+        self.left, self.top, self.right, self.bottom = left, top, right, bottom
 
     def __getitem__(self, *args, **kwargs):
         _tuple = (self.left, self.right, self.top, self.bottom)
         return _tuple.__getitem__(*args, **kwargs)
 
-
     def is_valid(self):
         return (t.Undefined not in (self.top, self.bottom,
                                     self.left, self.right) and
                 self.right >= self.left and self.bottom >= self.top)
-
-    def _top_changed(self, old, new):
-        if self._bounds_check and \
-                self.bottom is not t.Undefined and new >= self.bottom:
-            self.top = old
-        else:
-            self.update()
 
     @property
     def width(self):
@@ -840,10 +837,10 @@ class RectangularROI(BaseInteractiveROI):
                 self._bounds_check = True
                 self.update()
 
-    def _bottom_changed(self, old, new):
+    def _left_changed(self, old, new):
         if self._bounds_check and \
-                self.top is not t.Undefined and new <= self.top:
-            self.bottom = old
+                self.right is not t.Undefined and new >= self.right:
+            self.left = old
         else:
             self.update()
 
@@ -854,10 +851,17 @@ class RectangularROI(BaseInteractiveROI):
         else:
             self.update()
 
-    def _left_changed(self, old, new):
+    def _top_changed(self, old, new):
         if self._bounds_check and \
-                self.right is not t.Undefined and new >= self.right:
-            self.left = old
+                self.bottom is not t.Undefined and new >= self.bottom:
+            self.top = old
+        else:
+            self.update()
+
+    def _bottom_changed(self, old, new):
+        if self._bounds_check and \
+                self.top is not t.Undefined and new <= self.top:
+            self.bottom = old
         else:
             self.update()
 
