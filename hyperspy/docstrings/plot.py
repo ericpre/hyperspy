@@ -72,8 +72,8 @@ BASE_PLOT_DOCSTRING_PARAMETERS = \
             Plot markers added using s.add_marker(marker, permanent=True).
             Note, a large number of markers might lead to very slow plotting.
         navigator_kwds : dict
-            Only for image navigator, additional keyword arguments for 
-            matplotlib.pyplot.imshow().
+            Only for image navigator, additional keyword arguments for
+            :py:func:`matplotlib.pyplot.imshow`.
         """
 
 
@@ -88,20 +88,63 @@ BASE_PLOT_DOCSTRING = \
 
         Parameters
         ----------
-        %s""" % BASE_PLOT_DOCSTRING_PARAMETERS
+        """
+
 
 PLOT1D_DOCSTRING = \
-"""norm : str, optional
+    """norm : str, optional
             The function used to normalize the data prior to plotting.
             Allowable strings are: ``'auto'``, ``'linear'``, ``'log'``.
             (default value is ``'auto'``).
             If ``'auto'``, intensity is plotted on a linear scale except when
             ``power_spectrum=True`` (only for complex signals).
+        intensity_autoscale : bool
+            If True, the intensity ('y') limits are reset to their extrema when
+            the navigation indices or data are changed. Default is True.
+        axes_autoscale : bool
+            If True, the axis ('x') limits are reset to their maxima when the
+            the navigation indices or data are changed. If False, the limit of
+            the axes are not reset automotically. Use ``intensity_autoscale``
+            to reset automatically the intensity ('y') limits. Default is
+            False.
         """
+
 
 PLOT2D_DOCSTRING = \
     """colorbar : bool, optional
             If true, a colorbar is plotted for non-RGB images.
+        intensity_autoscale : bool
+            If True, the intensity limits of the image are reset to the
+            estimated value defined by vmin, vmax, when the navigation indices
+            or data are changed. Default is True.
+        saturated_pixels: scalar
+            The percentage of pixels that are left out of the bounds.
+            For example, the low and high bounds of a value of 1 are the 0.5%
+            and 99.5% percentiles. It must be in the [0, 100] range.
+            If None (default value), the value from the preferences is used.
+        norm : {"auto", "linear", "power", "log", "symlog" or a subclass of
+                :py:class:`matplotlib.colors.Normalise`}
+            Set the norm of the image to display. If "auto", a linear scale is
+            used except if when `power_spectrum=True` in case of complex data
+            type. "symlog" can be used to display negative value on a negative
+            scale - read :py:class:`matplotlib.colors.SymLogNorm` and the
+            `linthresh` and `linscale` parameter for more details.
+        vmin, vmax : scalar, optional
+            `vmin` and `vmax` are used to normalize luminance data.
+        gamma : float
+            Parameter used in the power-law normalisation when the parameter
+            norm="power". Read :py:class:`matplotlib.colors.PowerNorm` for more
+            details. Default value is 1.0.
+        linthresh : float
+            When used with norm="symlog", define the range within which the
+            plot is linear (to avoid having the plot go to infinity around
+            zero). Default value is 0.01.
+        linscale : float
+            This allows the linear range (-linthresh to linthresh) to be
+            stretched relative to the logarithmic range. Its value is the
+            number of powers of base to use for each half of the linear range.
+            See :py:class:`matplotlib.colors.SymLogNorm` for more details.
+            Defaulf value is 0.1.
         scalebar : bool, optional
             If True and the units and scale of the x and y axes are the same a
             scale bar is plotted.
@@ -111,13 +154,13 @@ PLOT2D_DOCSTRING = \
             If True, plot the axes ticks. If None axes_ticks are only
             plotted when the scale bar is not plotted. If False the axes ticks
             are never plotted.
-        saturated_pixels: scalar
-            The percentage of pixels that are left out of the bounds.
-            For example, the low and high bounds of a value of 1 are the 0.5%
-            and 99.5% percentiles. It must be in the [0, 100] range.
-            If None (default value), the value from the preferences is used.
-        vmin, vmax : scalar, optional
-            `vmin` and `vmax` are used to normalize luminance data.
+        axes_off : {bool}
+            Default is False.
+        axes_autoscale : bool
+            If True, the limits of the extent of the image are reset
+            automatically to their extrema when the navigation indices or the
+            data are changed. Use ``intensity_autoscale`` to reset
+            automatically the intensity limits of the image. Default is False.
         no_nans : bool, optional
             If True, set nans to zero for plotting.
         centre_colormap : {"auto", True, False}
@@ -127,7 +170,8 @@ PLOT2D_DOCSTRING = \
         min_aspect : float
             Set the minimum aspect ratio of the image and the figure. To
             keep the image in the aspect limit the pixels are made
-            rectangular."""
+            rectangular.
+        """
 
 
 COMPLEX_DOCSTRING = \
@@ -143,12 +187,12 @@ COMPLEX_DOCSTRING = \
             the signal is one-dimensional.
         fft_shift : bool, default False
             If True, shift the zero-frequency component.
-            See `numpy.fft.fftshift` for more details.
+            See :py:func:`numpy.fft.fftshift` for more details.
         """
 
 
-KWARGS_DOCSTRING = \
+PLOT2D_KWARGS_DOCSTRING = \
     """**kwargs
-            Only for :py:class:`~hyperspy._signals.signal2d.Signal2D`:
-            additional (optional) keyword arguments for
-            :py:func:`matplotlib.pyplot.imshow`."""
+            Only when plotting an image: additional (optional) keyword
+            arguments for :py:func:`matplotlib.pyplot.imshow`.
+        """

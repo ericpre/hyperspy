@@ -54,6 +54,8 @@ from hyperspy import components1d
 from hyperspy._signals.lazy import LazySignal
 from hyperspy.docstrings.signal1d import CROP_PARAMETER_DOC
 from hyperspy.docstrings.signal import SHOW_PROGRESSBAR_ARG, PARALLEL_ARG, MAX_WORKERS_ARG
+from hyperspy.docstrings.plot import (
+    BASE_PLOT_DOCSTRING, BASE_PLOT_DOCSTRING_PARAMETERS, PLOT1D_DOCSTRING)
 from hyperspy.misc.test_utils import ignore_warning
 
 
@@ -857,7 +859,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
         It displays a window where the new calibration can be set by:
 
         * setting the values of offset, units and scale directly
-        * or selecting a range by dragging the mouse on the spectrum figure 
+        * or selecting a range by dragging the mouse on the spectrum figure
           and setting the new values for the given range limits
 
         Parameters
@@ -973,7 +975,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
 
         Notes
         -----
-        This method uses the lowess algorithm from the `statsmodels` library, 
+        This method uses the lowess algorithm from the `statsmodels` library,
         which needs to be installed to use this method.
         """
         if not statsmodels_installed:
@@ -1405,7 +1407,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
 
         Returns
         -------
-        structured array of shape (npeaks) containing fields: 'position', 
+        structured array of shape (npeaks) containing fields: 'position',
         'width', and 'height' for each peak.
 
 
@@ -1470,7 +1472,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
 
         Returns
         -------
-        width or [width, left, right], depending on the value of 
+        width or [width, left, right], depending on the value of
         `return_interval`.
         """
 
@@ -1545,6 +1547,30 @@ class Signal1D(BaseSignal, CommonSignal1D):
             return width
 
     estimate_peak_width.__doc__ %= (SHOW_PROGRESSBAR_ARG, PARALLEL_ARG, MAX_WORKERS_ARG)
+
+    def plot(self,
+             navigator="auto",
+             plot_markers=True,
+             intensity_autoscale=True,
+             norm="auto",
+             axes_autoscale=False,
+             axes_manager=None,
+             navigator_kwds={},
+             **kwargs):
+        """%s
+        %s
+        %s
+        """
+        super().plot(navigator=navigator,
+                     plot_markers=plot_markers,
+                     intensity_autoscale=intensity_autoscale,
+                     norm=norm,
+                     axes_autoscale=axes_autoscale,
+                     axes_manager=axes_manager,
+                     navigator_kwds=navigator_kwds,
+                     **kwargs)
+    plot.__doc__ %= (BASE_PLOT_DOCSTRING, BASE_PLOT_DOCSTRING_PARAMETERS,
+                     PLOT1D_DOCSTRING)
 
 
 class LazySignal1D(LazySignal, Signal1D):
