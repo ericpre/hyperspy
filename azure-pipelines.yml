@@ -36,12 +36,20 @@ strategy:
     MacOS_Python38:
       vmImage: 'macOS-latest'
       PYTHON_VERSION: '3.8'
+    MacOS_Python37:
+      vmImage: 'macOS-latest'
+      PYTHON_VERSION: '3.7'
+      condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
     MacOS_Python36:
       vmImage: 'macOS-latest'
       PYTHON_VERSION: '3.6'
     Windows_Python38:
       vmImage: 'windows-latest'
       PYTHON_VERSION: '3.8'
+    Windows_Python37:
+      vmImage: 'windows-latest'
+      PYTHON_VERSION: '3.7'
+      condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/')
     Windows_Python36:
       vmImage: 'windows-latest'
       PYTHON_VERSION: '3.6'
