@@ -70,6 +70,8 @@ steps:
 
 - bash: |
     source activate $ENV_NAME
+    pip install cibuildwheel==1.5.5
+    cibuildwheel .
     #pytest --mpl --pyargs hyperspy --mpl-results-path $RESULT_IMAGES_FOLDER
   displayName: Run test suite
 
@@ -78,7 +80,7 @@ steps:
   displayName: Publish Image Comparison
   condition: failed()
 
-- template: azure_pipelines/generate_distribution.yml@templates
+#- template: azure_pipelines/generate_distribution.yml@templates
 - template: azure_pipelines/publish_distribution.yml@templates
 # - template: azure_pipelines/update_github_release.yml@templates
 #   parameters:
