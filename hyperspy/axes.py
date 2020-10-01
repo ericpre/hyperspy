@@ -81,9 +81,9 @@ def generate_uniform_axis(offset, scale, size, offset_index=0):
 
 
 def _create_axis(**kwargs):
-    """Creates a uniform, a non-uniform axis or a functional axis depending on 
+    """Creates a uniform, a non-uniform axis or a functional axis depending on
     the kwargs provided. If `axis` or  `expression` are provided, a non-uniform
-    or a functional axis is created, respectively. Otherwise a uniform axis is 
+    or a functional axis is created, respectively. Otherwise a uniform axis is
     created, which can be defined by `scale`, `size` and `offset`.
 
     Alternatively, the offset_index of the offset channel can be specified.
@@ -607,7 +607,7 @@ class DataAxis(BaseDataAxis):
         self.update_axis()
 
     def _slice_me(self, slice_):
-        """Returns a slice to slice the corresponding data axis and set the 
+        """Returns a slice to slice the corresponding data axis and set the
         axis accordingly.
 
         Parameters
@@ -826,11 +826,11 @@ class UniformDataAxis(BaseDataAxis, UnitConversion):
     offset = t.CFloat(0)
     size = t.CInt(0)
     def __init__(self,
+                 size,
                  index_in_array=None,
                  name=t.Undefined,
                  units=t.Undefined,
                  navigate=t.Undefined,
-                 size=1.,
                  scale=1.,
                  offset=0.):
         super().__init__(
