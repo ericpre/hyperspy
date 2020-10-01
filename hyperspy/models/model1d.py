@@ -27,7 +27,6 @@ from hyperspy.exceptions import WrongObjectError, SignalDimensionError
 from hyperspy.decorators import interactive_range_selector
 from hyperspy.drawing.widgets import LabelWidget, VerticalLineWidget
 from hyperspy.events import EventSuppressor
-from hyperspy.exceptions import SignalDimensionError, WrongObjectError
 from hyperspy.model import BaseModel, ModelComponents, ModelSpecialSlicers
 from hyperspy.signal_tools import SpanSelectorInSignal1D
 from hyperspy.ui_registry import DISPLAY_DT, TOOLKIT_DT, add_gui_method

@@ -2607,7 +2607,7 @@ class BaseSignal(FancySlicing,
                 navigator = "slider"
             elif (self.axes_manager.navigation_dimension == 1 and
                     self.axes_manager.signal_dimension == 1):
-                if (self.axes_manager.navigation_axes[0].is_uniform and 
+                if (self.axes_manager.navigation_axes[0].is_uniform and
                         self.axes_manager.signal_axes[0].is_uniform):
                     navigator = "data"
                 else:
@@ -2616,8 +2616,12 @@ class BaseSignal(FancySlicing,
                 if self.axes_manager.signal_dimension == 0:
                     navigator = self.deepcopy()
                 else:
+                    if self.axes_manager.signal_dimension == 1:
+                        function = self.integrate1D
+                    else:
+                        function = self.sum
                     navigator = interactive(
-                        self.sum,
+                        function,
                         self.events.data_changed,
                         self.axes_manager.events.any_axis_changed,
                         self.axes_manager.signal_axes)
@@ -3571,7 +3575,7 @@ class BaseSignal(FancySlicing,
         ----
         If you intend to calculate the numerical integral, please use the
         :py:meth:`integrate1D` function instead. To avoid erroneous misuse of the
-        `sum` function as integral, it raises a warning when working with 
+        `sum` function as integral, it raises a warning when working with
         a non-uniform axis.
 
         See also
@@ -3870,7 +3874,7 @@ class BaseSignal(FancySlicing,
         proper :py:meth:`derivative` function instead. To avoid erroneous
         misuse of the `diff` function as derivative, it raises an error when
         when working with a non-uniform axis.
-        
+
         See also
         --------
         derivative, integrate1D, integrate_simpson
@@ -3989,6 +3993,11 @@ class BaseSignal(FancySlicing,
         (64,64)
 
         """
+        try:
+            # in case axis is tuple
+            axis = axis[0]
+        except TypeError:
+            pass
         axis = self.axes_manager[axis]
         s = out or self._deepcopy_with_new_data(None)
         data = sp.integrate.simps(y=self.data, x=axis.axis,
@@ -4228,7 +4237,8 @@ class BaseSignal(FancySlicing,
         (64,64)
 
         """
-        if self.metadata.Signal.binned is False:
+        if self.metadata.Signal.binned is False or (
+                hasattr(axis, 'is_uniform') and not axis.is_uniform):
             return self.integrate_simpson(axis=axis, out=out)
         else:
             return self.sum(axis=axis, out=out)

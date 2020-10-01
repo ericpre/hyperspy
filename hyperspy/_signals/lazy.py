@@ -390,6 +390,11 @@ class LazySignal(BaseSignal):
     diff.__doc__ = BaseSignal.diff.__doc__
 
     def integrate_simpson(self, axis, out=None):
+        try:
+            # in case axis is tuple
+            axis = axis[0]
+        except TypeError:
+            pass
         axis = self.axes_manager[axis]
         from scipy import integrate
         axis = self.axes_manager[axis]
@@ -547,7 +552,7 @@ class LazySignal(BaseSignal):
             if inplace:
                 raise ValueError("In place computation is not compatible with "
                                   "ragged array for lazy signal.")
-            # Shape of the signal dimension will change for the each nav. 
+            # Shape of the signal dimension will change for the each nav.
             # index, which means we can't predict the shape and the dtype needs
             # to be python object to support numpy ragged array
             sig_shape = ()
@@ -595,7 +600,7 @@ class LazySignal(BaseSignal):
                             pixels[s:e], axis=0) for s, e in zip(starts, ends)
                     ]
             res_data = pixels[0]
-    
+
         res = map_result_construction(
             self, inplace, res_data, ragged, sig_shape, lazy=not ragged)
 
