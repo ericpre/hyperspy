@@ -45,7 +45,7 @@ install:
   - pip install --upgrade pytest
   # Test against the oldest supported version of matplotlib, numpy and scipy
   - if [ "$OLDEST_SUPPORTED_VERSION" == true ]; then
-      pip install matplotlib==2.2.3 numpy==1.15.4 scipy==1.1;
+      pip install matplotlib==3.0.0 numpy==1.15.4 scipy==1.1;
     fi
   - pip install $PIP_ARGS .["${PIP_SELECTOR}"];
 
