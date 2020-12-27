@@ -493,50 +493,24 @@ class DataAxis(t.HasTraits, UnitConversion):
         """Return calibrated value from a suitable string """
         if len(value) == 0:
             raise ValueError("Cannot index with an empty string")
-        # if first character is a digit, try unit conversion
-        # otherwise try relative (fractional) indexing
-        elif value[0].isdigit():
-            value = self._get_value_from_value_with_units(value)
+        # Starting with 'rel', it must be relative slicing
         elif value.startswith('rel'):
-            value = self._get_value_from_relative_string(value)
-        else:
-            raise ValueError(f"`{value}` is not a suitable string for slicing.")
-        return value
-
-    def _get_value_from_value_with_units(self, value):
-        "Get axes value by passing a calibrated value with a unit, like '20nm'"
-        if isinstance(value, (np.ndarray, list, tuple)):
-            value = np.asarray([_ureg.parse_expression(val).to(self.units).magnitude for val in value])
-        else:
+            try:
+                relative_value = float(value[3:])
+            except ValueError:
+                raise ValueError("`rel` must be followed by a number in range [0, 1].")
+            if relative_value < 0 or relative_value > 1:
+                raise ValueError("Relative value must be in range [0, 1]")
+            value = self.low_value + relative_value * (self.high_value - self.low_value)
+        # if first character is a digit, try unit conversion
+        # otherwise we don't support it
+        elif value[0].isdigit():
             value = _ureg.parse_expression(value)
             if not hasattr(value, 'units'):
-                raise ValueError('"{}" should contain a unit.'.format(value))
-            value = value.to(self.units).magnitude
-        return value
-
-    def _get_index_from_value_with_units(self, value):
-        "Get axes index by passing a calibrated value with a unit, like '20nm'"
-        return self.value2index(self._get_value_from_value_with_units(value))
-
-    def _get_value_from_relative_string(self, relative_string):
-        "Get axes index by relative indexing using string like 'rel0.5'"
-        relative_index_error = "Can only index with relative indexing between rel0.0 and rel1.0, got {}"
-        try:
-            relative_value = float(relative_string[3:])
-        except ValueError:
-            raise ValueError(relative_index_error.format(relative_string))
-        except TypeError:
-            relative_value = np.char.replace(relative_string, 'rel', '').astype(float)
-        if not (np.all(0.0 <= relative_value) and np.all(relative_value <= 1.0)):
-            raise ValueError(relative_index_error.format(relative_string))
-        return self._get_value_from_relative_value(relative_value)
-
-    def _get_value_from_relative_value(self, relative_value):
-        '''
-        Gets the value of a position along the axis by relative or fractional value. The value is
-        not necessarily in the .axis array.
-        '''
-        value = self.low_value + relative_value * (self.high_value - self.low_value)
+                raise ValueError(f"`{value}` should contain a unit.")
+            value = float(value.to(self.units).magnitude)
+        else:
+            raise ValueError(f"`{value}` is not a suitable string for slicing.")
         return value
 
     def _parse_entry_to_calibrated_value(self, value):
