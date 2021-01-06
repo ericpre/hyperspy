@@ -45,7 +45,7 @@ from hyperspy.misc.utils import iterable_not_string
 from hyperspy.external.progressbar import progressbar
 from hyperspy.exceptions import SignalDimensionError, DataDimensionError
 from hyperspy.misc import rgb_tools
-from hyperspy.misc.utils import underline, isiterable
+from hyperspy.misc.utils import underline, isiterable, to_numpy
 from hyperspy.misc.hist_tools import histogram
 from hyperspy.drawing.utils import animate_legend
 from hyperspy.drawing.marker import markers_metadata_dict_to_markers
@@ -2399,11 +2399,18 @@ class BaseSignal(FancySlicing,
 
     @data.setter
     def data(self, value):
+        try:
+            import cupy as cp
+            cupy_installed = True
+        except:
+            cupy_installed = False
         from dask.array import Array
         if isinstance(value, Array):
             if not value.ndim:
                 value = value.reshape((1,))
             self._data = value
+        elif cupy_installed and isinstance(value, cp.ndarray):
+            self._data = np.atleast_1d(value)
         else:
             self._data = np.atleast_1d(np.asanyarray(value))
 
@@ -2581,10 +2588,12 @@ class BaseSignal(FancySlicing,
     def __call__(self, axes_manager=None, fft_shift=False):
         if axes_manager is None:
             axes_manager = self.axes_manager
-        value = np.atleast_1d(self.data.__getitem__(
-            axes_manager._getitem_tuple))
+        value = self.data.__getitem__(axes_manager._getitem_tuple)
         if isinstance(value, da.Array):
             value = np.asarray(value)
+        else:
+            value = to_numpy(value)
+        value = np.atleast_1d(value)
         if fft_shift:
             value = np.fft.fftshift(value)
         return value
@@ -2656,7 +2665,8 @@ class BaseSignal(FancySlicing,
             # Sum over all but the first navigation axis.
             am = navigator.axes_manager
             navigator = navigator.sum(am.signal_axes + am.navigation_axes[1:])
-            return np.nan_to_num(navigator.data).squeeze()
+            nav_data = to_numpy(navigator.data)
+            return np.nan_to_num(nav_data).squeeze()
 
         def get_dynamic_explorer_wrapper(*args, **kwargs):
             navigator.axes_manager.indices = self.axes_manager.indices[
@@ -2732,7 +2742,7 @@ class BaseSignal(FancySlicing,
                     self._plot.navigator_data_function = lambda axes_manager=None: np.abs(
                         self.data)
                 else:
-                    self._plot.navigator_data_function = lambda axes_manager=None: self.data
+                    self._plot.navigator_data_function = lambda axes_manager=None: to_numpy(self.data)
             elif navigator == "spectrum":
                 self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             else:
