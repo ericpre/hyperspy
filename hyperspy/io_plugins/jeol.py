@@ -182,7 +182,7 @@ def read_img(filename, scale=None, **kwargs):
 
 
 def read_pts(filename, scale=None, rebin_energy=1, sum_frames=True,
-             SI_dtype=np.uint8, cutoff_at_kV=None, downsample=1, **kwargs):
+             SI_dtype=np.uint8, cutoff_at_kV=None, downsample=1, max_workers=None, **kwargs):
     fd = open(filename, "br")
     file_magic = np.fromfile(fd, "<I", 1)[0]
 
@@ -230,14 +230,16 @@ def read_pts(filename, scale=None, rebin_energy=1, sum_frames=True,
         width_norm = int(4096 / width * downsample_width)
         height_norm = int(4096 / height * downsample_height)
 
+        fd.seek(data_pos)
+        # read spectrum image
+        rawdata = np.fromfile(fd, dtype="u2")
+
+        frame_index = get_frame_index(rawdata, width)
+
         width = int(width / downsample_width)
         height = int(height / downsample_height)
 
         channel_number = int(4096 / rebin_energy)
-
-        fd.seek(data_pos)
-        # read spectrum image
-        rawdata = np.fromfile(fd, dtype="u2")
 
         if scale is not None:
             xscale = -scale[2] / width
@@ -303,9 +305,13 @@ def read_pts(filename, scale=None, rebin_energy=1, sum_frames=True,
             })
 
         data = np.zeros(data_shape, dtype=SI_dtype)
+        if max_workers is None:
+            from os import cpu_count
+            max_workers = min(32, cpu_count())
         datacube_reader = readcube if sum_frames else readcube_frames
         data = datacube_reader(rawdata, data, rebin_energy, channel_number,
-                               width_norm, height_norm, np.iinfo(SI_dtype).max)
+                               width_norm, height_norm, np.iinfo(SI_dtype).max,
+                               frame_index, max_workers)
 
         hv = meas_data_header["MeasCond"]["AccKV"]
         if hv <= 30.0:
@@ -369,13 +375,11 @@ def parsejeol(fd):
             str_len = np.fromfile(fd, "<i", 1)[0]
             kwrd = fd.read(str_len).rstrip(b"\x00")
 
-            if (
-                kwrd == b"\xce\xdf\xb0\xc4"
-            ):  # correct variable name which might be 'Port'
+            if kwrd == b"\xce\xdf\xb0\xc4":
+                # correct variable name which might be 'Port'
                 kwrd = "Port"
-            elif (
-                kwrd[-1] == 222
-            ):  # remove undecodable byte at the end of first ScanSize variable
+            elif kwrd[-1] == 222:
+                # remove undecodable byte at the end of first ScanSize variable
                 kwrd = kwrd[:-1].decode("utf-8")
             else:
                 kwrd = kwrd.decode("utf-8")
@@ -437,8 +441,80 @@ def parsejeol(fd):
 
 
 @numba.njit(cache=True)
+def get_frame_index(rawdata, width):
+    """
+    Returns the array of the index of the start of each frame
+
+    Parameters
+    ----------
+    rawdata : :py:class:`~numpy.ndarray`
+        The raw data of the spectrum image
+    width : int
+        The width the spectrum image
+
+    Returns
+    -------
+    :py:class:`~numpy.ndarray`
+        Array of the index of the start of each frame
+
+    """
+    # Calculate the start of each frame
+    y_index = np.where((rawdata>=36864)*(rawdata<40960))[0]
+    y = rawdata[y_index]
+
+    # Need to add back the first frame, which is filtered in the where
+    y_start_frame_index = np.array([0] + list(np.where(y[1:]<y[:-1])[0]))
+
+    return y_index[y_start_frame_index]
+
+
+@numba.njit(cache=True)
+def get_threads_chunks(total_size, frame_index, n_threads=0):
+    """
+    Get start and end indices of threads in an array of size total_size.
+    Distribute a equivalent number of frames accross the threads and using the
+    frame index, we determine the starts and the ends value.
+    Remaining values are added to the last thread.
+
+    Parameters
+    ----------
+    total_size : int
+        The total size of the array.
+    frame_index : :py:class:`~numpy.ndarray`
+        The array of the index of the start of each frame.
+    n_threads : int, optional
+        The number of threads to consider, if 0, the number of threads is
+        determine using numba default configuration. The default is 0.
+
+    Returns
+    -------
+    starts : :py:class:`~numpy.ndarray`
+        The index of the start of each chunk.
+    ends : :py:class:`~numpy.ndarray`
+        The index of the end of each chunk.
+    n_threads : int
+        Number of threads.
+    frame_number_per_thread : int
+        Number of frame per thread
+
+    """
+    frame_number = len(frame_index)
+    frame_number_per_thread = int(frame_number / n_threads)
+    if frame_number_per_thread < 1:
+        # If number of frame is smaller than the number of thread, we use only
+        # one frame
+        n_threads = 1
+    starts = np.array([frame_index[i*frame_number_per_thread]
+                       for i in range(n_threads)])
+    ends = np.array([frame_index[(i+1)*frame_number_per_thread]
+                     for i in range(n_threads)])
+
+    return starts, ends, n_threads, frame_number_per_thread
+
+
+@numba.njit(cache=True)
 def readcube(rawdata, hypermap, rebin_energy, channel_number, width_norm,
-             height_norm, max_value):  # pragma: no cover
+             height_norm, max_value, *args):  # pragma: no cover
     for value in rawdata:
         if value >= 32768 and value < 36864:
             x = int((value - 32768) / width_norm)
@@ -455,31 +531,48 @@ def readcube(rawdata, hypermap, rebin_energy, channel_number, width_norm,
     return hypermap
 
 
-@numba.njit(cache=True)
+@numba.njit(cache=True, parallel=True)
 def readcube_frames(rawdata, hypermap, rebin_energy, channel_number,
-             width_norm, height_norm, max_value):  # pragma: no cover
+                    width_norm, height_norm, max_value, frame_index,
+                    n_threads):  # pragma: no cover
     """
     We need to create a separate function, because numba.njit doesn't play well
     with an array having its shape depending on something else
+
+    WIP: It needs more work because there are still issues with the threading:
+        the value doesn't seem to be inserted in the correct index (test failing)
     """
-    frame_idx = 0
-    previous_y = 0
-    for value in rawdata:
-        if value >= 32768 and value < 36864:
-            x = int((value - 32768) / width_norm)
-        elif value >= 36864 and value < 40960:
-            y = int((value - 36864) / height_norm)
-            if y < previous_y:
-                frame_idx += 1
-            previous_y = y
-        elif value >= 45056 and value < 49152:
-            z = int((value - 45056) / rebin_energy)
-            if z < channel_number:
-                hypermap[frame_idx, y, x, z] += 1
-                if hypermap[frame_idx, y, x, z] == max_value:
-                    raise ValueError("The range of the dtype is too small, "
-                                     "use `SI_dtype` to set a dtype with "
-                                     "higher range.")
+    # previous_y = 0
+    total_size = rawdata.shape[0]
+    starts, ends, n_threads, frame_number_per_thread = get_threads_chunks(
+        total_size,
+        frame_index,
+        n_threads
+    )
+    frame_start = np.arange(n_threads) * frame_number_per_thread
+    # Specify the chunks taking into account the frame index, to make we don't
+    # lost any X-ray count.
+    for thread_idx in numba.prange(n_threads):
+        # Starting value of `frame_idx` for each thread
+        frame_idx = frame_start[thread_idx]
+        previous_y = 0
+        for i in range(starts[thread_idx], ends[thread_idx]):
+            value = rawdata[i]
+            if value >= 32768 and value < 36864:
+                x = int((value - 32768) / width_norm)
+            elif value >= 36864 and value < 40960:
+                y = int((value - 36864) / height_norm)
+                if y < previous_y:
+                    frame_idx += 1
+                previous_y = y
+            elif value >= 45056 and value < 49152:
+                z = int((value - 45056) / rebin_energy)
+                if z < channel_number:
+                    hypermap[frame_idx, y, x, z] += 1
+                    if hypermap[frame_idx, y, x, z] == max_value:
+	                    raise ValueError("The range of the dtype is too small, "
+	                                     "use `SI_dtype` to set a dtype with "
+	                                     "higher range.")
     return hypermap
 
 
