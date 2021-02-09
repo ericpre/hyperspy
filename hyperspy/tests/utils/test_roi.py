@@ -18,12 +18,15 @@
 
 import numpy as np
 import pytest
+import traits.api as t
 
+from hyperspy.decorators import lazifyTestClass
 from hyperspy.roi import (CircleROI, Line2DROI, Point1DROI, Point2DROI,
                           RectangularROI, SpanROI, _get_central_half_limits_of_axis)
 from hyperspy.signals import Signal1D, Signal2D
-import traits.api as t
 
+
+@lazifyTestClass
 class TestROIs():
 
     def setup_method(self, method):
@@ -55,6 +58,9 @@ class TestROIs():
         scale = s.axes_manager[0].scale
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[1:])
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[:, int(35 / scale), ...])
 
@@ -63,6 +69,9 @@ class TestROIs():
         r = Point1DROI(37.)
         sr = r(s)
         scale = s.axes_manager[0].scale
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[:, int(round(37 / scale)), ...])
         r = Point1DROI(39.)
@@ -77,6 +86,9 @@ class TestROIs():
         scale = s.axes_manager[0].scale
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[1:])
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[:, int(35 / scale), ...])
 
@@ -91,6 +103,9 @@ class TestROIs():
         scale = s.axes_manager[0].scale
         assert (sr.axes_manager.navigation_shape ==
                 s.axes_manager.navigation_shape[2:])
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[int(40 / scale), int(35 / scale), ...])
 
@@ -101,6 +116,9 @@ class TestROIs():
         scale = s.axes_manager.signal_axes[0].scale
         assert (sr.axes_manager.signal_shape ==
                 s.axes_manager.signal_shape[2:])
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[..., int(2 / scale), int(1 / scale)])
 
@@ -122,6 +140,9 @@ class TestROIs():
         n = (30 - 15) / scale
         assert (sr.axes_manager.navigation_shape ==
                 (n, ) + s.axes_manager.navigation_shape[1:])
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[:, int(15 / scale):int(30 // scale), ...])
 
@@ -175,6 +196,9 @@ class TestROIs():
         scale = s.axes_manager.signal_axes[0].scale
         n = (3 - 1) / scale
         assert sr.axes_manager.signal_shape == (n, )
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(sr.data, s.data[...,
                                                 int(1 / scale):int(3 / scale)])
 
@@ -190,6 +214,9 @@ class TestROIs():
              (int(round(5.6 / scale1)), int(round(12.2 / scale1)),))
         assert (sr.axes_manager.navigation_shape ==
                 (n[0][1] - n[0][0], n[1][1] - n[1][0]))
+        if s._lazy:
+            s.compute()
+            sr.compute()
         np.testing.assert_equal(
             sr.data, s.data[n[1][0]:n[1][1], n[0][0]:n[0][1], ...])
 
@@ -203,7 +230,11 @@ class TestROIs():
         # Test adding roi to plot
         s.plot()
         w = r.add_widget(s)
-        np.testing.assert_equal(r(s).data, s.data)
+        sr = r(s)
+        if s._lazy:
+            s.compute()
+            sr.compute()
+        np.testing.assert_equal(sr.data, s.data)
 
         # width and height should range between 1 and axes shape
         with pytest.raises(ValueError):
@@ -539,6 +570,7 @@ class TestROIs():
         np.testing.assert_allclose(line.length, np.sqrt(8))
 
 
+@lazifyTestClass
 class TestInteractive:
 
     def setup_method(self, method):
@@ -549,13 +581,21 @@ class TestInteractive:
         s = self.s
         r = RectangularROI(left=3, right=7, top=2, bottom=5)
         sr = r(s)
-        d = s.data.sum()
-        sr.data += 2
-        assert d + sr.data.size * 2 == s.data.sum()
-        r.x += 2
+        sr_ref = r(s)
+
+        sr.data = sr.data + 2
+
         sr2 = r(s)
         r(s, out=sr)
+
+        if s._lazy:
+            s.compute()
+            sr.compute()
+            sr2.compute()
+            sr_ref.compute()
+
         np.testing.assert_array_equal(sr2.data, sr.data)
+        np.testing.assert_array_equal(sr2.data, sr_ref.data)
 
     def test_out_special_case(self):
         s = self.s.inav[0]
