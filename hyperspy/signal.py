@@ -24,6 +24,7 @@ from datetime import datetime
 import logging
 from pint import UnitRegistry, UndefinedUnitError
 from pathlib import Path
+from distutils.version import LooseVersion
 
 import numpy as np
 import scipy as sp
@@ -2399,18 +2400,13 @@ class BaseSignal(FancySlicing,
 
     @data.setter
     def data(self, value):
-        try:
-            import cupy as cp
-            cupy_installed = True
-        except:
-            cupy_installed = False
         from dask.array import Array
         if isinstance(value, Array):
             if not value.ndim:
                 value = value.reshape((1,))
             self._data = value
-        elif cupy_installed and isinstance(value, cp.ndarray):
-            self._data = np.atleast_1d(value)
+        elif hasattr(value, '__cuda_array_interface__'):
+            self._data = value
         else:
             self._data = np.atleast_1d(np.asanyarray(value))
 
@@ -3467,7 +3463,12 @@ class BaseSignal(FancySlicing,
             _logger.info("{0!r} data is replaced by its optimized copy, see "
                          "optimize parameter of ``Basesignal.transpose`` "
                          "for more information.".format(self))
-            self.data = np.ascontiguousarray(self.data)
+            # `like` keyword is an experimental feature pending on acceptance
+            # of NEP 35: necessary to support cupy array
+            kw = {}
+            if LooseVersion(np.__version__) >= LooseVersion("1.20"):
+                 kw['like'] = self.data
+            self.data = np.ascontiguousarray(self.data, **kw)
 
     def _iterate_signal(self):
         """Iterates over the signal data.
