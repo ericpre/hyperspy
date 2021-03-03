@@ -46,7 +46,9 @@ from hyperspy.misc.utils import iterable_not_string
 from hyperspy.external.progressbar import progressbar
 from hyperspy.exceptions import SignalDimensionError, DataDimensionError
 from hyperspy.misc import rgb_tools
-from hyperspy.misc.utils import underline, isiterable, slugify, to_numpy
+from hyperspy.misc.utils import (
+    underline, isiterable, slugify, to_numpy, is_cupy_array
+    )
 from hyperspy.misc.hist_tools import histogram
 from hyperspy.drawing.utils import animate_legend
 from hyperspy.drawing.marker import markers_metadata_dict_to_markers
@@ -4719,6 +4721,13 @@ class BaseSignal(FancySlicing,
         if show_progressbar is None:
             show_progressbar = preferences.General.show_progressbar
 
+        # Don't run in parallel with cupy array
+        if is_cupy_array(self.data):
+            if parallel:
+                _logger.warning("Multithreading disable, because the "
+                                "computation is perfomed on the GPU.")
+            parallel = False
+
         if parallel is None:
             parallel = preferences.General.parallel
 
@@ -4759,8 +4768,7 @@ class BaseSignal(FancySlicing,
                 for ind, res in zip(
                     range(res_data.size), executor.map(func, zip(*iterators))
                 ):
-                    if not hasattr(res, '__array__'):
-                        res = np.asarray(res)
+                    res = np.asarray(res)
                     res_data.flat[ind] = res
 
                     if ragged is False:
