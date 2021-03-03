@@ -35,9 +35,14 @@ class TestCupy:
         s = hs.signals.Signal1D(data)
         self.s = s
 
-    def test_call_signal(self):
+    @pytest.mark.parametrize('as_numpy', [True, False, None])
+    def test_call_signal(self, as_numpy):
         s = self.s
-        np.testing.assert_allclose(s(), np.arange(100))
+        s2 = s(as_numpy=as_numpy)
+        if not as_numpy:
+            assert isinstance(s2, cp.ndarray)
+            s2 = cp.asnumpy(s2)
+        np.testing.assert_allclose(s2, np.arange(100))
 
     def test_roi(self):
         s = self.s
@@ -59,3 +64,23 @@ class TestCupy:
         def dummy_function(data):
             return data * 10
         _ = s.map(dummy_function, parallel)
+
+    def test_plot_images(self):
+        s = self.s
+        s2 = s.T.inav[:5]
+        hs.plot.plot_images(s2, axes_decor=None)
+        assert isinstance(s2.data, cp.ndarray)
+
+        s_list = [_s for _s in s2]
+        hs.plot.plot_images(s_list, axes_decor=None)
+        assert isinstance(s_list[0].data, cp.ndarray)
+
+        hs.plot.plot_images(s_list, axes_decor=None, colorbar='single')
+        assert isinstance(s_list[0].data, cp.ndarray)
+
+    @pytest.mark.parametrize('style', ['overlap', 'cascade', 'mosaic', 'heatmap'])
+    def test_plot_spectra(self, style):
+        s = self.s
+        s2 = s.inav[:5, 0]
+        hs.plot.plot_spectra(s2, style=style)
+        assert isinstance(s2.data, cp.ndarray)

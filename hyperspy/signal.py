@@ -16,22 +16,25 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
-import copy
-import warnings
-import inspect
 from contextlib import contextmanager
+import copy
 from datetime import datetime
-import logging
-from pint import UnitRegistry, UndefinedUnitError
-from pathlib import Path
 from distutils.version import LooseVersion
-
-import numpy as np
-import scipy as sp
-import dask.array as da
-from matplotlib import pyplot as plt
-import traits.api as t
+from functools import partial
+import inspect
+import logging
 import numbers
+from pathlib import Path
+import warnings
+
+import dask.array as da
+
+from matplotlib import pyplot as plt
+import numpy as np
+from pint import UnitRegistry, UndefinedUnitError
+import scipy as sp
+import traits.api as t
+
 
 from hyperspy.axes import AxesManager
 from hyperspy import io
@@ -2588,13 +2591,13 @@ class BaseSignal(FancySlicing,
             axes.append({'size': int(s), })
         return axes
 
-    def __call__(self, axes_manager=None, fft_shift=False):
+    def __call__(self, axes_manager=None, fft_shift=False, as_numpy=None):
         if axes_manager is None:
             axes_manager = self.axes_manager
         value = self.data.__getitem__(axes_manager._getitem_tuple)
         if isinstance(value, da.Array):
             value = np.asarray(value)
-        else:
+        elif as_numpy:
             value = to_numpy(value)
         value = np.atleast_1d(value)
         if fft_shift:
@@ -2647,7 +2650,7 @@ class BaseSignal(FancySlicing,
                 "for plotting as a 2D signal.")
 
         self._plot.axes_manager = axes_manager
-        self._plot.signal_data_function = self.__call__
+        self._plot.signal_data_function = partial(self.__call__, as_numpy=True)
 
         if self.metadata.has_item("Signal.quantity"):
             self._plot.quantity_label = self.metadata.Signal.quantity
@@ -2659,9 +2662,9 @@ class BaseSignal(FancySlicing,
 
         def get_static_explorer_wrapper(*args, **kwargs):
             if np.issubdtype(navigator.data.dtype, np.complexfloating):
-                return np.abs(navigator())
+                return np.abs(navigator(as_numpy=True))
             else:
-                return navigator()
+                return navigator(as_numpy=True)
 
         def get_1D_sum_explorer_wrapper(*args, **kwargs):
             navigator = self
@@ -2676,9 +2679,9 @@ class BaseSignal(FancySlicing,
                 navigator.axes_manager.signal_dimension:]
             navigator.axes_manager._update_attributes()
             if np.issubdtype(navigator().dtype, np.complexfloating):
-                return np.abs(navigator())
+                return np.abs(navigator(as_numpy=True))
             else:
-                return navigator()
+                return navigator(as_numpy=True)
 
         if not isinstance(navigator, BaseSignal) and navigator == "auto":
             if self.navigator is not None:
@@ -2736,18 +2739,20 @@ class BaseSignal(FancySlicing,
                     raise ValueError(
                         "The dimensions of the provided (or stored) navigator "
                         "are not compatible with this signal.")
-            elif navigator == "slider":
-                self._plot.navigator_data_function = "slider"
+            elif isinstance(navigator, str):
+                if navigator == "slider":
+                    self._plot.navigator_data_function = "slider"
+                elif navigator == "data":
+                    if np.issubdtype(self.data.dtype, np.complexfloating):
+                        self._plot.navigator_data_function = \
+                            lambda axes_manager=None: to_numpy(np.abs(self.data))
+                    else:
+                        self._plot.navigator_data_function = \
+                            lambda axes_manager=None: to_numpy(self.data)
+                elif navigator == "spectrum":
+                    self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             elif navigator is None:
                 self._plot.navigator_data_function = None
-            elif navigator == "data":
-                if np.issubdtype(self.data.dtype, np.complexfloating):
-                    self._plot.navigator_data_function = lambda axes_manager=None: np.abs(
-                        self.data)
-                else:
-                    self._plot.navigator_data_function = lambda axes_manager=None: to_numpy(self.data)
-            elif navigator == "spectrum":
-                self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             else:
                 raise ValueError(
                     'navigator must be one of "spectrum","auto", '
@@ -5117,7 +5122,8 @@ class BaseSignal(FancySlicing,
 
         return None
 
-    def get_current_signal(self, auto_title=True, auto_filename=True):
+    def get_current_signal(self, auto_title=True, auto_filename=True,
+                           as_numpy=None):
         """Returns the data at the current coordinates as a
         :py:class:`~hyperspy.signal.BaseSignal` subclass.
 
@@ -5134,6 +5140,10 @@ class BaseSignal(FancySlicing,
             (which is always the case when the Signal has been read from a
             file), the filename stored in the metadata is modified by
             appending an underscore and the current indices in parentheses.
+        as_numpy : bool of None
+            Only when using cupy array. If ``True``, return the current signal
+            as numpy array. If ``None`` or ``False``, return the array type,
+            either a cupy or numpy array.
 
         Returns
         -------
@@ -5167,7 +5177,7 @@ class BaseSignal(FancySlicing,
                     marker.set_data(**key_dict)
 
         cs = self.__class__(
-            self(),
+            self(as_numpy=as_numpy),
             axes=self.axes_manager._get_signal_axes_dicts(),
             metadata=metadata.as_dictionary(),
             attributes={'_lazy': False})
