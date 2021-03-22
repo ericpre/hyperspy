@@ -124,7 +124,7 @@ class TestComplexProperties:
                                            (False, False),
                                            (False, True)])
 def test_get_unwrapped_phase_1D(parallel, lazy):
-    phase = 6 * (1 - np.abs(np.indices((9,)) - 4) / 4)
+    phase = 6 * (1 - abs(np.indices((9,)) - 4) / 4)
     s = hs.signals.ComplexSignal(np.ones_like(phase) * np.exp(1j * phase))
     if lazy:
         s = s.as_lazy()
@@ -140,7 +140,7 @@ def test_get_unwrapped_phase_1D(parallel, lazy):
                                            (False, False),
                                            (False, True)])
 def test_get_unwrapped_phase_2D(parallel, lazy):
-    phase = 5 * (1 - np.abs(np.indices((9, 9)) - 4).sum(axis=0) / 8)
+    phase = 5 * (1 - abs(np.indices((9, 9)) - 4).sum(axis=0) / 8)
     s = hs.signals.ComplexSignal(np.ones_like(phase) * np.exp(1j * phase))
     if lazy:
         s = s.as_lazy()
@@ -155,7 +155,7 @@ def test_get_unwrapped_phase_2D(parallel, lazy):
                                            (False, False),
                                            (False, True)])
 def test_get_unwrapped_phase_3D(parallel, lazy):
-    phase = 4 * (1 - np.abs(np.indices((9, 9, 9)) - 4).sum(axis=0) / 12)
+    phase = 4 * (1 - abs(np.indices((9, 9, 9)) - 4).sum(axis=0) / 12)
     s = hs.signals.ComplexSignal(np.ones_like(phase) * np.exp(1j * phase))
     if lazy:
         s = s.as_lazy()

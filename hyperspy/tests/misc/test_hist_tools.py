@@ -33,8 +33,8 @@ def generate_bad_toy_data():
     which previously caused a MemoryError when
     using the Freedman-Diaconis rule.
     """
-    ax1 = np.exp(-np.abs(np.arange(-30, 100, 0.02)))
-    ax2 = np.exp(-np.abs(np.arange(-40, 90, 0.02)))
+    ax1 = np.exp(-abs(np.arange(-30, 100, 0.02)))
+    ax2 = np.exp(-abs(np.arange(-40, 90, 0.02)))
     s1 = hs.signals.EELSSpectrum(ax1)
     s2 = hs.signals.EELSSpectrum(ax2)
     s1 = hs.stack([s1] * 5)
