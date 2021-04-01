@@ -3989,7 +3989,8 @@ class BaseSignal(FancySlicing,
             return s
     integrate_simpson.__doc__ %= (ONE_AXIS_PARAMETER, OUT_ARG)
 
-    def fft(self, shift=False, apodization=False, real_fft_only=False, **kwargs):
+    def fft(self, shift=False, apodization=False, real_fft_only=False,
+            out=None, **kwargs):
         """Compute the discrete Fourier Transform.
 
         This function computes the discrete Fourier Transform over the signal
@@ -4011,14 +4012,17 @@ class BaseSignal(FancySlicing,
             windows, respectively (default is ``False``).
         real_fft_only : bool, default False
             If ``True`` and data is real-valued, uses :py:func:`numpy.fft.rfftn`
-            instead of :py:func:`numpy.fft.fftn`
+            instead of :py:func:`numpy.fft.fftn`. Note that
+            :py:func:`numpy.fft.rfftn` doesn't return the conjugate part.
+        %s
         **kwargs : dict
             other keyword arguments are described in :py:func:`numpy.fft.fftn`
 
         Returns
         -------
         s : :py:class:`~hyperspy._signals.complex_signal.ComplexSignal`
-            A Signal containing the result of the FFT algorithm
+            If ``out=None``, returns a signal containing the result of the
+            FFT algorithm
 
         Examples
         --------
@@ -4040,10 +4044,13 @@ class BaseSignal(FancySlicing,
         if apodization == True:
             apodization = 'hann'
 
+        s_fft = out or self._deepcopy_with_new_data(None)
+
         if apodization:
-            im_fft = self.apply_apodization(window=apodization, inplace=False)
+            data = self.apply_apodization(window=apodization, inplace=False)
         else:
-            im_fft = self
+            data = self
+
         ax = self.axes_manager
         axes = ax.signal_indices_in_array
 
@@ -4055,31 +4062,37 @@ class BaseSignal(FancySlicing,
             fft_f = np.fft.fftn
 
         if shift:
-            im_fft = self._deepcopy_with_new_data(np.fft.fftshift(
-                fft_f(im_fft.data, axes=axes, **kwargs), axes=axes))
+            s_fft.data = np.fft.fftshift(fft_f(data.data, axes=axes, **kwargs),
+                                         axes=axes)
         else:
-            im_fft = self._deepcopy_with_new_data(
-                fft_f(self.data, axes=axes, **kwargs))
+            s_fft.data = fft_f(data.data, axes=axes, **kwargs)
 
-        im_fft.change_dtype("complex")
-        im_fft.metadata.General.title = 'FFT of {}'.format(
-            im_fft.metadata.General.title)
-        im_fft.metadata.set_item('Signal.FFT.shifted', shift)
-        if hasattr(self.metadata.Signal, 'quantity'):
-            self.metadata.Signal.__delattr__('quantity')
+        s_fft._assign_subclass()
 
-        ureg = UnitRegistry()
-        for axis in im_fft.axes_manager.signal_axes:
-            axis.scale = 1. / axis.size / axis.scale
-            axis.offset = 0.0
-            try:
-                units = ureg.parse_expression(str(axis.units))**(-1)
-                axis.units = '{:~}'.format(units.units)
-            except UndefinedUnitError:
-                _logger.warning('Units are not set or cannot be recognized')
-            if shift:
-                axis.offset = -axis.high_value / 2.
-        return im_fft
+        if out is not None:
+            out.events.data_changed.trigger(obj=out)
+        else:
+            s_fft.metadata.General.title = f'FFT of {s_fft.metadata.General.title}'
+            s_fft.metadata.set_item('Signal.FFT.shifted', shift)
+            if hasattr(s_fft.metadata.Signal, 'quantity'):
+                s_fft.metadata.Signal.__delattr__('quantity')
+
+            ureg = UnitRegistry()
+            for axis in s_fft.axes_manager.signal_axes:
+                axis.scale = 1. / axis.size / axis.scale
+                axis.offset = 0.0
+                try:
+                    units = ureg.parse_expression(str(axis.units))**(-1)
+                    axis.units = '{:~}'.format(units.units)
+                except UndefinedUnitError:
+                    _logger.warning('Units are not set or cannot be recognized')
+                if shift:
+                    axis.offset = -axis.high_value / 2.
+
+            return s_fft
+
+    fft.__doc__ %= (OUT_ARG)
+
 
     def ifft(self, shift=None, return_real=True, **kwargs):
         """

@@ -172,3 +172,18 @@ class TestFFTSignal1D:
             self.s.fft(apodization=apodization)
             == self.s.apply_apodization(window=apodization).fft()
         )
+
+
+@pytest.mark.parametrize('apodization', [True, False])
+def test_fft_out(apodization):
+    shape = (4, 5)
+    rng = np.random.RandomState(123)
+    im = Signal2D(rng.random_sample(size=shape))
+    for axis in im.axes_manager.signal_axes:
+        axis.units = "nm"
+    out = Signal2D(np.empty(shape))
+    im.fft(apodization=apodization, out=out)
+    im_fft = im.fft(apodization=apodization)
+    assert isinstance(out, im_fft.__class__)
+
+    np.testing.assert_allclose(im_fft.data, out.data)
