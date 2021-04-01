@@ -4061,11 +4061,9 @@ class BaseSignal(FancySlicing,
         else:
             fft_f = np.fft.fftn
 
+        s_fft.data = fft_f(data.data, axes=axes, **kwargs)
         if shift:
-            s_fft.data = np.fft.fftshift(fft_f(data.data, axes=axes, **kwargs),
-                                         axes=axes)
-        else:
-            s_fft.data = fft_f(data.data, axes=axes, **kwargs)
+            s_fft.data = np.fft.fftshift(s_fft.data, axes=axes)
 
         s_fft._assign_subclass()
 
@@ -4146,11 +4144,8 @@ class BaseSignal(FancySlicing,
 
         s_ifft = out or self._deepcopy_with_new_data(None)
 
-        if shift:
-            s_ifft.data = np.fft.ifftn(
-                np.fft.ifftshift(self.data, axes=axes), axes=axes, **kwargs)
-        else:
-            s_ifft.data = np.fft.ifftn(self.data, axes=axes, **kwargs)
+        data = np.fft.ifftshift(self.data, axes=axes) if shift else self.data
+        s_ifft.data = np.fft.ifftn(data, axes=axes, **kwargs)
 
         if return_real:
             s_ifft.data = np.real(s_ifft.data)
