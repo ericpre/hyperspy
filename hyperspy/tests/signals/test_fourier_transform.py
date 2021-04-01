@@ -212,3 +212,12 @@ def test_ifft_out(return_real):
         assert np.iscomplexobj(out.data)
 
     np.testing.assert_allclose(im_ifft.data, out.data)
+
+
+def test_plot_fft():
+    shape = (2, 4, 5)
+    rng = np.random.RandomState(123)
+    s = Signal2D(rng.random_sample(size=shape))
+    for axis in s.axes_manager.signal_axes:
+        axis.units = "nm"
+    s.plot_fft()

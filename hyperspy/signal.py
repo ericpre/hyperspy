@@ -65,6 +65,7 @@ from hyperspy.misc.signal_tools import (are_signals_aligned,
                                         broadcast_signals)
 from hyperspy.misc.math_tools import outer_nd, hann_window_nth_order, check_random_state
 from hyperspy.exceptions import VisibleDeprecationWarning
+from hyperspy.roi import SpanROI, RectangularROI
 
 
 _logger = logging.getLogger(__name__)
@@ -2726,6 +2727,65 @@ class BaseSignal(FancySlicing,
     plot.__doc__ %= (BASE_PLOT_DOCSTRING, BASE_PLOT_DOCSTRING_PARAMETERS,
                      PLOT1D_DOCSTRING, PLOT2D_KWARGS_DOCSTRING)
 
+    def plot_fft(self, power_spectrum=True, roi=None, **kwargs):
+        """
+        Plot the fast fourier transform (FFT) of a signal. For convenience
+        the zero component of the FFT will be shifted in the centre but this
+        can be changed using the keywords argument.
+
+        Parameters
+        ----------
+        power_spectrum : bool, optional
+            Whether to plot the power spectrum or not. The default is True.
+        roi : :py:class:`~hyperspy.roi.BaseROI`, optional
+            ROI to add on the signal dimension. If ``None``, a
+            :py:class:`~hyperspy.roi.SpanROI` or a
+            :py:class:`~hyperspy.roi.RectangularROI` will be added for 1D and
+            2D signal, respectively. The default is None.
+        **kwargs : dict
+            The keyword argument are to passed to
+            :py:meth:`~hyperspy.signal.BaseSignal.fft`
+
+        Returns
+        -------
+        None.
+
+        See Also
+        --------
+        :py:meth:`~hyperspy.signal.BaseSignal.fft`
+
+        """
+        if self.axes_manager.signal_dimension not in [1, 2]:
+            raise ValueError("The signal dimension must be 0 or 1")
+
+        if roi is None:
+            if self.axes_manager.signal_dimension == 1:
+                roi = SpanROI()
+            else:
+                roi = RectangularROI()
+
+        if self._plot is None or not self._plot.is_active:
+            self.plot()
+
+        sliced_signal = roi.interactive(self, axes=self.axes_manager.signal_axes)
+
+        if 'shift' not in kwargs.keys():
+            kwargs['shift'] = True
+
+        # Create an output signal for the fft
+        fft = sliced_signal.fft(**kwargs)
+
+        # Create the interactive fft using out argument
+        interactive(
+            sliced_signal.fft,
+            event=roi.events.changed,
+            recompute_out_event=self.events.data_changed,
+            out=fft,
+            **kwargs,
+        )
+
+        fft.plot(power_spectrum=power_spectrum)
+
     def save(self, filename=None, overwrite=None, extension=None,
              **kwds):
         """Saves the signal in the specified format.
@@ -4037,6 +4097,10 @@ class BaseSignal(FancySlicing,
         ----
         For further information see the documentation of
         :py:func:`numpy.fft.fftn`
+
+        See Also
+        --------
+        :py:meth:`~hyperspy.signal.BaseSignal.fft`
         """
 
         if self.axes_manager.signal_dimension == 0:
@@ -4065,13 +4129,13 @@ class BaseSignal(FancySlicing,
         if shift:
             s_fft.data = np.fft.fftshift(s_fft.data, axes=axes)
 
+        s_fft.metadata.set_item('Signal.FFT.shifted', shift)
         s_fft._assign_subclass()
 
         if out is not None:
             out.events.data_changed.trigger(obj=out)
         else:
             s_fft.metadata.General.title = f'FFT of {s_fft.metadata.General.title}'
-            s_fft.metadata.set_item('Signal.FFT.shifted', shift)
             if hasattr(s_fft.metadata.Signal, 'quantity'):
                 s_fft.metadata.Signal.__delattr__('quantity')
 
@@ -4133,6 +4197,10 @@ class BaseSignal(FancySlicing,
         ----
         For further information see the documentation of
         :py:func:`numpy.fft.ifftn`
+
+        See Also
+        --------
+        :py:meth:`~hyperspy.signal.BaseSignal.fft`
         """
 
         if self.axes_manager.signal_dimension == 0:
