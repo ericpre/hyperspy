@@ -4093,8 +4093,7 @@ class BaseSignal(FancySlicing,
 
     fft.__doc__ %= (OUT_ARG)
 
-
-    def ifft(self, shift=None, return_real=True, **kwargs):
+    def ifft(self, shift=None, return_real=True, out=None, **kwargs):
         """
         Compute the inverse discrete Fourier Transform.
 
@@ -4114,13 +4113,15 @@ class BaseSignal(FancySlicing,
         return_real : bool, default True
             If ``True``, returns only the real part of the inverse FFT.
             If ``False``, returns all parts.
+        %s
         **kwargs : dict
             other keyword arguments are described in :py:func:`numpy.fft.ifftn`
 
         Return
         ------
         s : :py:class:`~hyperspy.signal.BaseSignal` (or subclasses)
-            A Signal containing the result of the inverse FFT algorithm
+            If ``out=None``, returns a Signal containing the result of the
+            inverse FFT algorithm
 
         Examples
         --------
@@ -4143,31 +4144,38 @@ class BaseSignal(FancySlicing,
         if shift is None:
             shift = self.metadata.get_item('Signal.FFT.shifted', False)
 
-        if shift:
-            im_ifft = self._deepcopy_with_new_data(np.fft.ifftn(
-                np.fft.ifftshift(self.data, axes=axes), axes=axes, **kwargs))
-        else:
-            im_ifft = self._deepcopy_with_new_data(np.fft.ifftn(
-                self.data, axes=axes, **kwargs))
+        s_ifft = out or self._deepcopy_with_new_data(None)
 
-        im_ifft.metadata.General.title = 'iFFT of {}'.format(
-            im_ifft.metadata.General.title)
-        if im_ifft.metadata.has_item('Signal.FFT'):
-            del im_ifft.metadata.Signal.FFT
+        if shift:
+            s_ifft.data = np.fft.ifftn(
+                np.fft.ifftshift(self.data, axes=axes), axes=axes, **kwargs)
+        else:
+            s_ifft.data = np.fft.ifftn(self.data, axes=axes, **kwargs)
 
         if return_real:
-            im_ifft = im_ifft.real
+            s_ifft.data = np.real(s_ifft.data)
 
-        ureg = UnitRegistry()
-        for axis in im_ifft.axes_manager.signal_axes:
-            axis.scale = 1. / axis.size / axis.scale
-            try:
-                units = ureg.parse_expression(str(axis.units)) ** (-1)
-                axis.units = '{:~}'.format(units.units)
-            except UndefinedUnitError:
-                _logger.warning('Units are not set or cannot be recognized')
-            axis.offset = 0.
-        return im_ifft
+        s_ifft._assign_subclass()
+
+        if out is not None:
+            out.events.data_changed.trigger(obj=out)
+        else:
+            s_ifft.metadata.General.title = f'iFFT of {s_ifft.metadata.General.title}'
+            if s_ifft.metadata.has_item('Signal.FFT'):
+                del s_ifft.metadata.Signal.FFT
+
+            ureg = UnitRegistry()
+            for axis in s_ifft.axes_manager.signal_axes:
+                axis.scale = 1. / axis.size / axis.scale
+                try:
+                    units = ureg.parse_expression(str(axis.units)) ** (-1)
+                    axis.units = '{:~}'.format(units.units)
+                except UndefinedUnitError:
+                    _logger.warning('Units are not set or cannot be recognized')
+                axis.offset = 0.
+            return s_ifft
+
+    ifft.__doc__ %= (OUT_ARG)
 
     def integrate1D(self, axis, out=None):
         """Integrate the signal over the given axis.

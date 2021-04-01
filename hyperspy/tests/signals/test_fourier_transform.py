@@ -22,6 +22,7 @@ import pytest
 from hyperspy.decorators import lazifyTestClass
 from hyperspy.signals import (
     BaseSignal,
+    ComplexSignal,
     ComplexSignal1D,
     ComplexSignal2D,
     Signal1D,
@@ -187,3 +188,27 @@ def test_fft_out(apodization):
     assert isinstance(out, im_fft.__class__)
 
     np.testing.assert_allclose(im_fft.data, out.data)
+
+
+@pytest.mark.parametrize('return_real', [True, False])
+def test_ifft_out(return_real):
+    shape = (4, 5)
+    rng = np.random.RandomState(123)
+    im = Signal2D(rng.random_sample(size=shape))
+    for axis in im.axes_manager.signal_axes:
+        axis.units = "nm"
+    im_fft = im.fft()
+    out = Signal2D(np.empty(shape))
+    im_fft.ifft(return_real=return_real, out=out)
+    im_ifft = im_fft.ifft(return_real=return_real)
+    assert isinstance(out, im_ifft.__class__)
+    if return_real:
+        assert not isinstance(im_ifft, ComplexSignal)
+        assert not np.iscomplexobj(im_ifft.data)
+        assert not np.iscomplexobj(out.data)
+    else:
+        assert isinstance(im_ifft, ComplexSignal)
+        assert np.iscomplexobj(im_ifft.data)
+        assert np.iscomplexobj(out.data)
+
+    np.testing.assert_allclose(im_ifft.data, out.data)
