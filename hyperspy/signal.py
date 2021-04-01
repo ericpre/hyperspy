@@ -5929,8 +5929,9 @@ class BaseSignal(FancySlicing,
         """
         return self.transpose()
 
-    def apply_apodization(self, window='hann',
-                          hann_order=None, tukey_alpha=0.5, inplace=False):
+
+    def apply_apodization(self, window='hann', hann_order=None,
+                          tukey_alpha=0.5, inplace=False, out=None):
         """
         Apply an `apodization window
         <http://mathworld.wolfram.com/ApodizationFunction.html>`_ to a Signal.
@@ -5955,14 +5956,15 @@ class BaseSignal(FancySlicing,
                   If one, the Tukey window is equivalent to a Hann window.
         inplace : bool, optional
             If ``True``, the apodization is applied in place, *i.e.* the signal
-            data  will be substituted by the apodized one (default is
-            ``False``).
+            data  will be substituted by the apodized one. Not compatible with
+            using ``out``. Default is False.
+        %s Not compatible with using inplace. Default is None.
 
         Returns
         -------
         out : :py:class:`~hyperspy.signal.BaseSignal` (or subclasses), optional
-            If ``inplace=False``, returns the apodized signal of the same
-            type as the provided Signal.
+            If ``inplace=False`` or ``out=None``, returns the apodized signal
+            of the same type as the provided Signal.
 
         Examples
         --------
@@ -5971,6 +5973,9 @@ class BaseSignal(FancySlicing,
         >>> holo.apply_apodization('tukey', tukey_alpha=0.1).plot()
         """
 
+        if out is not None and inplace is True:
+            raise ValueError("Applying appodization in place is not "
+                             "compatible with using the out argument.")
         if window == 'hanning' or window == 'hann':
             if hann_order:
                 def window_function(
@@ -5999,24 +6004,34 @@ class BaseSignal(FancySlicing,
 
         window_nd = outer_nd(*windows_1d).T
 
+        if inplace:
+            s = self
+        elif out is not None:
+            s = out
+        else:
+            s = self._deepcopy_with_new_data(None)
+
         # Prepare slicing for multiplication window_nd nparray with data with
         # higher dimensionality:
-        if inplace:
-            slice_w = []
+        slice_w = []
 
-            # Iterate over all dimensions of the data
-            for i in range(self.data.ndim):
-                if any(
-                        i == axes):  # If current dimension represents one of signal axis, all elements in window
-                    # along current axis to be subscribed
-                    slice_w.append(slice(None))
-                else:  # If current dimension is navigation one, new axis is absent in window and should be created
-                    slice_w.append(None)
+        # Iterate over all dimensions of the data
+        for i in range(s.data.ndim):
+            if any(
+                    i == axes):  # If current dimension represents one of signal axis, all elements in window
+                # along current axis to be subscribed
+                slice_w.append(slice(None))
+            else:  # If current dimension is navigation one, new axis is absent in window and should be created
+                slice_w.append(None)
 
-            self.data = self.data * window_nd[tuple(slice_w)]
-            self.events.data_changed.trigger(obj=self)
+        s.data = self.data * window_nd[tuple(slice_w)]
+
+        if not inplace or out is None:
+            return s
         else:
-            return self * window_nd
+            s.events.data_changed.trigger(obj=s)
+
+    apply_apodization.__doc__ %= (OUT_ARG)
 
     def _check_navigation_mask(self, mask):
         """

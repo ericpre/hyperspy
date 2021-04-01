@@ -130,3 +130,16 @@ def test_apodization(lazy, window_type, inplace):
     # 2. Test raises:
     with pytest.raises(ValueError):
         signal1d.apply_apodization(window='hamm')
+
+    with pytest.raises(ValueError):
+        signal1d.apply_apodization(window='hamm', inplace=True, out=signal1d)
+
+
+def test_apodization_out():
+    N = 100
+    s = Signal1D(np.random.rand(N))
+    out = Signal1D(np.zeros(N))
+
+    s.apply_apodization(out=out)
+    s2 = s.apply_apodization()
+    np.testing.assert_allclose(s2.data, out.data)
