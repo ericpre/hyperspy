@@ -210,6 +210,7 @@ class MPL_HyperExplorer:
         if pointer is not None:
             pointer.add_widget(signal, axes=signal.axes_manager.navigation_axes)
             self.signal_data_function_kwargs['roi'] = pointer
+            pointer.connect_navigate()
         self.plot_signal(**kwargs)
 
     def assign_pointer(self):
