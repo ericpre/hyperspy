@@ -56,10 +56,13 @@ from hyperspy.axes import DataAxis
 from hyperspy.drawing import widgets
 from hyperspy.ui_registry import add_gui_method
 
-not_set_error_msg = (
+
+NOT_SET_ERROR_MESSAGE = (
         "Some ROI parameters have not yet been set. "
         "Set them before slicing a signal."
         )
+
+
 class BaseROI(t.HasTraits):
 
     """Base class for all ROIs.
@@ -106,6 +109,7 @@ class BaseROI(t.HasTraits):
     def parameters(self):
         raise NotImplementedError()
 
+    @property
     def is_valid(self):
         """
         Determine if the ROI is in a valid state.
@@ -120,7 +124,7 @@ class BaseROI(t.HasTraits):
         It should be called by implementors whenever the ROI changes.
         The base implementation simply triggers the changed event.
         """
-        if self.is_valid():
+        if self.is_valid:
             self.events.changed.trigger(self)
 
     def _get_ranges(self):
@@ -193,8 +197,8 @@ class BaseROI(t.HasTraits):
               space can fit the right number of axis, and use that if it
               fits. If not, it will try the signal space.
         """
-        if not self.is_valid():
-            raise ValueError(not_set_error_msg)
+        if not self.is_valid:
+            raise ValueError(NOT_SET_ERROR_MESSAGE)
         if axes is None and signal in self.signal_map:
             axes = self.signal_map[signal][1]
         else:
@@ -315,7 +319,7 @@ class BaseInteractiveROI(BaseROI):
         This implementation  updates the widgets associated with it, and
         triggers the changed event.
         """
-        if self.is_valid():
+        if self.is_valid:
             if not self._applying_widget_change:
                 self._update_widgets()
             self.events.changed.trigger(self)
@@ -760,6 +764,7 @@ class SpanROI(BaseInteractiveROI):
     def parameters(self):
         return {"left":self.left, "right":self.right}
 
+    @property
     def is_valid(self):
         return (t.Undefined not in tuple(self) and
                 self.right >= self.left)
@@ -849,6 +854,7 @@ class RectangularROI(BaseInteractiveROI):
     def parameters(self):
         return {"left":self.left, "top":self.top, "right":self.right, "bottom":self.bottom}
 
+    @property
     def is_valid(self):
         return (not t.Undefined in tuple(self) and
                 self.right >= self.left and self.bottom >= self.top)
@@ -1003,6 +1009,7 @@ class CircleROI(BaseInteractiveROI):
             "r_inner": self.r_inner
             }
 
+    @property
     def is_valid(self):
         return (
             t.Undefined not in tuple(self)
@@ -1064,8 +1071,8 @@ class CircleROI(BaseInteractiveROI):
                   space can fit the right number of axis, and use that if it
                   fits. If not, it will try the signal space.
         """
-        if not self.is_valid():
-            raise ValueError(not_set_error_msg)
+        if not self.is_valid:
+            raise ValueError(NOT_SET_ERROR_MESSAGE)
         if axes is None and signal in self.signal_map:
             axes = self.signal_map[signal][1]
         else:
@@ -1414,8 +1421,8 @@ class Line2DROI(BaseInteractiveROI):
             profile. 0 means nearest-neighbor interpolation, and is both the
             default and the fastest.
         """
-        if not self.is_valid():
-            raise ValueError(not_set_error_msg)
+        if not self.is_valid:
+            raise ValueError(NOT_SET_ERROR_MESSAGE)
         if axes is None and signal in self.signal_map:
             axes = self.signal_map[signal][1]
         else:
