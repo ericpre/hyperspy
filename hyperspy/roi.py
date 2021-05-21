@@ -74,7 +74,7 @@ class BaseROI(t.HasTraits):
     def __init__(self):
         """Sets up events.changed event, and inits HasTraits.
         """
-        super(BaseROI, self).__init__()
+        super().__init__()
         self.events = Events()
         self.events.changed = Event("""
             Event that triggers when the ROI has changed.
@@ -269,6 +269,7 @@ class BaseROI(t.HasTraits):
 
         return axes_out
 
+
 def _get_mpl_ax(plot, axes):
     """
     Returns MPL Axes that contains the `axes`.
@@ -309,7 +310,7 @@ class BaseInteractiveROI(BaseROI):
     """
 
     def __init__(self):
-        super(BaseInteractiveROI, self).__init__()
+        super().__init__()
         self.widgets = set()
         self._applying_widget_change = False
 
@@ -498,8 +499,7 @@ class BaseInteractiveROI(BaseROI):
             widget.color = color
 
         # Remove existing ROI, if it exists and axes match
-        if signal in self.signal_map and \
-                self.signal_map[signal][1] == axes:
+        if signal in self.signal_map and self.signal_map[signal][1] == axes:
             self.remove_widget(signal)
 
         # Set DataAxes
@@ -568,6 +568,22 @@ class BaseInteractiveROI(BaseROI):
             w = self.signal_map.pop(signal)[0]
             self._remove_widget(w, render_figure)
 
+    def connect_navigate(self):
+        """Connect to the axes_manager such that changes in the ROI or in
+        the axes_manager are reflected in the other.
+        """
+        for signal in self.signal_map.keys():
+            signal.axes_manager.events.any_axis_changed.connect(self.update, [])
+            signal.axes_manager.events.indices_changed.connect(
+                self._on_navigate,
+                {'obj': 'axes_manager'})
+            self._on_navigate(signal.axes_manager)
+
+    def _on_navigate(self, axes_manager):
+        """Callback for axes_manager's change notification.
+        """
+        pass
+
 
 class BasePointROI(BaseInteractiveROI):
 
@@ -580,9 +596,10 @@ class BasePointROI(BaseInteractiveROI):
             axes = self.signal_map[signal][1]
         else:
             axes = self._parse_axes(axes, signal.axes_manager)
-        s = super(BasePointROI, self).__call__(signal=signal, out=out,
+        s = super().__call__(signal=signal, out=out,
                                                axes=axes)
         return s
+
 
 def guess_vertical_or_horizontal(axes, signal):
     # Figure out whether to use horizontal or vertical line:
@@ -606,6 +623,7 @@ def guess_vertical_or_horizontal(axes, signal):
     else:
         raise ValueError(
             "Could not find valid widget type for the given `axes` value")
+
 
 @add_gui_method(toolkey="hyperspy.Point1DROI")
 class Point1DROI(BasePointROI):
@@ -663,6 +681,17 @@ class Point1DROI(BasePointROI):
             return widgets.HorizontalLineWidget
         else:
             raise ValueError("direction must be either horizontal or vertical")
+
+    def _on_navigate(self, axes_manager):
+        """Callback for axes_manager's change notification.
+        """
+        # signal_map is  {signal:(widget, axes)}
+        for signal, item in self.signal_map.items():
+            # make sure we get value from the correct axes_manager, in case,
+            # we have several signal for this ROI
+            if axes_manager is signal.axes_manager:
+                # item[1] is a tuple of axis
+                self.value = item[1][0].value
 
 
 @add_gui_method(toolkey="hyperspy.Point2DROI")
@@ -803,6 +832,16 @@ class SpanROI(BaseInteractiveROI):
         else:
             raise ValueError("direction must be either horizontal or vertical")
 
+    def _on_navigate(self, axes_manager):
+        """Callback for axes_manager's change notification.
+        """
+        # signal_map is  {signal:(widget, axes)}
+        for signal, item in self.signal_map.items():
+            # make sure we get value from the correct axes_manager, in case,
+            # we have several signal for this ROI
+            if axes_manager is signal.axes_manager:
+                # item[1] is a tuple of axis
+                self.left = item[1][0].value
 
 
 @add_gui_method(toolkey="hyperspy.RectangularROI")
@@ -966,6 +1005,18 @@ class RectangularROI(BaseInteractiveROI):
 
     def _get_widget_type(self, axes, signal):
         return widgets.RectangleWidget
+
+    def _on_navigate(self, axes_manager):
+        """Callback for axes_manager's change notification.
+        """
+        # signal_map is  {signal:(widget, axes)}
+        for signal, item in self.signal_map.items():
+            # make sure we get value from the correct axes_manager, in case,
+            # we have several signal for this ROI
+            if axes_manager is signal.axes_manager:
+                # item[1] is a tuple of axis
+                self.left = item[1][0].value
+                self.top = item[1][1].value
 
 
 @add_gui_method(toolkey="hyperspy.CircleROI")
