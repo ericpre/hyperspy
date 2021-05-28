@@ -43,7 +43,7 @@ from hyperspy.misc.array_tools import (
     round_half_towards_zero,
 )
 from hyperspy.misc.math_tools import isfloat
-from hyperspy.misc.utils import isiterable, ordinal
+from hyperspy.misc.utils import TupleSA, isiterable, ordinal
 from hyperspy.ui_registry import add_gui_method, get_gui
 
 _logger = logging.getLogger(__name__)
@@ -2101,8 +2101,8 @@ class AxesManager(t.HasTraits):
         if not signal_axes and navigation_axes:
             getitem_tuple[-1] = slice(axis.index, axis.index + 1)
 
-        self._signal_axes = signal_axes[::-1]
-        self._navigation_axes = navigation_axes[::-1]
+        self._signal_axes = TupleSA(signal_axes[::-1])
+        self._navigation_axes = TupleSA(navigation_axes[::-1])
         self._getitem_tuple = tuple(getitem_tuple)
 
         if len(self.signal_axes) == 1 and self.signal_axes[0].size == 1:
