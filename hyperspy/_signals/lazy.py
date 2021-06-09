@@ -16,8 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
-import logging
 from functools import partial
+import logging
+import os
 import warnings
 
 import numpy as np
@@ -176,6 +177,12 @@ class LazySignal(BaseSignal):
         array created from an h5py DataSet (default HyperSpy hdf5 reader).
 
         """
+        try:
+            self._get_file_handle().close()
+        except AttributeError:
+            _logger.exception("Failed to close lazy Signal file")
+
+    def _get_file_handle(self):
         arrkey = None
         for key in self.data.dask.keys():
             if "array-original" in key:
@@ -183,7 +190,7 @@ class LazySignal(BaseSignal):
                 break
         if arrkey:
             try:
-                self.data.dask[arrkey].file.close()
+                return self.data.dask[arrkey].file
             except AttributeError:
                 _logger.exception("Failed to close lazy Signal file")
 
@@ -1197,6 +1204,42 @@ class LazySignal(BaseSignal):
         self.navigator = navigator.T
 
     compute_navigator.__doc__ %= SHOW_PROGRESSBAR_ARG
+
+    def to_zarr(self, store_path):
+        """
+        Use zarr backend for the dask array. Only hdf5-based file format are
+        supported.
+
+        Parameters
+        ----------
+        store_path : str
+            Path where the zarr file will be stored.
+
+        Raises
+        ------
+        ValueError
+            If the `store_path` folder is not empty.
+
+        Returns
+        -------
+        None.
+
+        """
+
+        if os.path.exists(store_path) and os.path.isdir(store_path):
+            if not os.listdir(store_path):
+                raise ValueError("Provided folder to store the zarr file is "
+                                 "not empty.")
+
+        import zarr
+        file_handle = self._get_file_handle()
+
+        store = zarr.open_group(store_path, mode='w')
+
+        from sys import stdout
+        zarr.copy(file_handle['Experiments/__unnamed__/data'], store, log=stdout)
+
+        self.data = da.from_zarr(store_path, component='data')
 
 
 def _reshuffle_mixed_blocks(array, ndim, sshape, nav_chunks):
