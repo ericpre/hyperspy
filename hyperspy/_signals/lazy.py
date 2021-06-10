@@ -192,7 +192,8 @@ class LazySignal(BaseSignal):
             try:
                 return self.data.dask[arrkey].file
             except AttributeError:
-                _logger.exception("Failed to close lazy Signal file")
+                _logger.exception("Failed to retrieve file handle: the file "
+                                  "is most likely already closed.")
 
     def _get_dask_chunks(self, axis=None, dtype=None):
         """Returns dask chunks.
