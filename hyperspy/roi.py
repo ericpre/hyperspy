@@ -406,9 +406,7 @@ class BaseInteractiveROI(BaseROI):
                     'fft_shift', False):
                 raise NotImplementedError('ROIs are not supported when data '
                                           'are shifted during plotting.')
-        # Undefined if roi initialised without specifying parameters
-        if t.Undefined in tuple(self):
-            self._set_default_values(signal)
+
         if isinstance(navigation_signal, str) and navigation_signal == "same":
             navigation_signal = signal
         if navigation_signal is not None:
@@ -484,6 +482,10 @@ class BaseInteractiveROI(BaseROI):
         kwargs:
             All keyword argument are passed to the widget constructor.
         """
+        # Undefined if roi initialised without specifying parameters
+        if t.Undefined in tuple(self):
+            self._set_default_values(signal)
+
         axes = self._parse_axes(axes, signal.axes_manager,)
         if widget is None:
             widget = self._get_widget_type(
@@ -507,7 +509,7 @@ class BaseInteractiveROI(BaseROI):
                 widget.snap_position = snap
 
         if widget.ax is None:
-            if signal._plot is None or signal._plot.signal_plot is None:
+            if signal._plot is None or not signal._plot.is_active:
                 raise Exception(
                     f"{repr(signal)} does not have an active plot. Plot the "
                     "signal before calling this method.")

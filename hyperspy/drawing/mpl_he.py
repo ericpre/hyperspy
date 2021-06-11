@@ -21,14 +21,14 @@ import logging
 
 from traits.api import Undefined
 
-from hyperspy.drawing import widgets, signal1d, image
 from hyperspy.defaults_parser import preferences
-
+from hyperspy.drawing import signal1d, image
+from hyperspy import roi
 
 _logger = logging.getLogger(__name__)
 
 
-class MPL_HyperExplorer(object):
+class MPL_HyperExplorer:
 
     """
 
@@ -107,7 +107,6 @@ class MPL_HyperExplorer(object):
             # Add the line to the figure
             sf.add_line(sl)
             sf.plot()
-            self.pointer.set_mpl_ax(sf.ax)
             if self.axes_manager.navigation_dimension > 1:
                 self._get_navigation_sliders()
                 for axis in self.axes_manager.navigation_axes[:-2]:
@@ -145,7 +144,6 @@ class MPL_HyperExplorer(object):
             if "cmap" not in kwargs.keys() or kwargs['cmap'] is None:
                 kwargs["cmap"] = preferences.Plot.cmap_navigator
             imf.plot(**kwargs)
-            self.pointer.set_mpl_ax(imf.ax)
             self.navigator_plot = imf
 
         if self.navigator_plot is not None:
@@ -176,21 +174,43 @@ class MPL_HyperExplorer(object):
         else:
             return False
 
-    def plot(self, **kwargs):
+    def plot(self, signal, pointer=None, **kwargs):
+        """
+        Setup the pointer and call ``plot_navigator`` and ``plot_signal``.
+
+        Parameters
+        ----------
+        signal : hyperspy signal
+            The signal to plot.
+        pointer : None or hyperspy roi, optional
+            ROI use as pointer. The default is None.
+        **kwargs : dict
+            Keyword argument passed to ``plot_signal`` except for
+            `navigator_kwds`, which is passed to ``plot_navigator``.
+
+        Returns
+        -------
+        None.
+
+        """
         # Parse the kwargs for plotting complex data
         for key in ['power_spectrum', 'fft_shift']:
             if key in kwargs:
                 self.signal_data_function_kwargs[key] = kwargs.pop(key)
-        if self.pointer is None:
+
+        # no provided pointer and no already existing pointer
+        if pointer is None and self.pointer is None:
             pointer = self.assign_pointer()
             if pointer is not None:
-                self.pointer = pointer(self.axes_manager)
-                self.pointer.color = 'red'
-                self.pointer.connect_navigate()
-            self.plot_navigator(**kwargs.pop('navigator_kwds', {}))
-            if pointer is not None:
-                self.navigator_plot.events.closed.connect(
-                    self.pointer.disconnect, [])
+                pointer = pointer()
+                pointer.color = 'red'
+
+        self.pointer = pointer
+        self.plot_navigator(**kwargs.pop('navigator_kwds', {}))
+
+        if pointer is not None:
+            pointer.add_widget(signal, axes=signal.axes_manager.navigation_axes)
+            self.signal_data_function_kwargs['roi'] = pointer
         self.plot_signal(**kwargs)
 
     def assign_pointer(self):
@@ -203,15 +223,25 @@ class MPL_HyperExplorer(object):
 
         if nav_dim == 2:  # It is an image
             if self.axes_manager.navigation_dimension > 1:
-                Pointer = widgets.SquareWidget
+                Pointer = roi.RectangularROI
             else:  # It is the image of a "spectrum stack"
-                Pointer = widgets.HorizontalLineWidget
+                Pointer = roi.SpanROI
         elif nav_dim == 1:  # It is a spectrum
-            Pointer = widgets.VerticalLineWidget
+            Pointer = roi.SpanROI
         else:
             Pointer = None
         self._pointer_nav_dim = nav_dim
         return Pointer
+
+    def connect_navigation(self, function):
+        # TODO: connect to axes_manager
+        if self.pointer is not None:
+            self.pointer.events.changed.connect(function, [])
+            if self.navigator_plot is not None:
+                self.navigator_plot.events.closed.connect(
+                    lambda: self.pointer.events.changed.disconnect(
+                        function),
+                    [])
 
     def _on_navigator_plot_closing(self):
         self.navigator_plot = None
