@@ -21,6 +21,7 @@ import datetime
 from distutils.version import LooseVersion
 import logging
 import os
+from pathlib import Path
 import warnings
 
 import h5py
@@ -779,16 +780,12 @@ def file_writer(filename, signal, close_file=True, **kwds):
     **kwds, optional
     """
     mode = kwds.get('mode', 'w')
-    if signal._lazy:
+    folder = signal.tmp_parameters.get_item('folder', '')
+    fname = signal.tmp_parameters.get_item('filename', '')
+    ext = signal.tmp_parameters.get_item('extension', '')
+    original_path = Path(folder, f"{fname}.{ext}")
+    if signal._lazy and Path(filename).absolute() == original_path:
         f = signal._get_file_handle()
-        # filename provided by h5py doesn't contain the full path and we need
-        # to know if the filename is in the current directory
-        path_split = os.path.split(filename)
-        # We open a new file when:
-        # - we don't save to current directory
-        # - the filename is different
-        if not path_split[0] in ['', '.'] or path_split[1] != f.filename:
-            f = h5py.File(filename, mode=mode)
     else:
         f = h5py.File(filename, mode=mode)
 
