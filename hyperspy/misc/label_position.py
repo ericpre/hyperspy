@@ -57,7 +57,7 @@ class SpectrumLabelPosition():
     def _get_current_signal_index(self):
         # if it is a hyperspectrum, get the correct active figure
         if self.signal._plot.pointer is not None:
-            sig_index = self.signal._plot.pointer.indices[0]
+            sig_index = self.signal.axes_manager.indices[0]
         else:
             sig_index = 0
 
