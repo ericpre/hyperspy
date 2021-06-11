@@ -203,9 +203,9 @@ class ComplexSignal(BaseSignal):
     unwrapped_phase.__doc__ %= (SHOW_PROGRESSBAR_ARG, PARALLEL_ARG, MAX_WORKERS_ARG)
 
     def __call__(self, axes_manager=None, power_spectrum=False,
-                 fft_shift=False, as_numpy=None):
-        value = super().__call__(axes_manager=axes_manager,
-                                 fft_shift=fft_shift, as_numpy=as_numpy)
+                 fft_shift=False, roi=None, as_numpy=None):
+        value = super().__call__(axes_manager=axes_manager, fft_shift=fft_shift,
+                                 roi=roi, as_numpy=as_numpy)
         if power_spectrum:
             value = abs(value)**2
         return value

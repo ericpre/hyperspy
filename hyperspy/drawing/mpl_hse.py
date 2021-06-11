@@ -100,7 +100,7 @@ class MPL_HyperSignal1D_Explorer(MPL_HyperExplorer):
         kwargs['data_function_kwargs'] = self.signal_data_function_kwargs
         sl.plot_indices = True
         if self.pointer is not None:
-            color = self.pointer.color
+            color = list(self.pointer.widgets)[0].color
         else:
             color = 'red'
         sl.set_line_properties(color=color, type='step')
@@ -143,15 +143,15 @@ class MPL_HyperSignal1D_Explorer(MPL_HyperExplorer):
                 copy.deepcopy(self.axes_manager)
         if self.right_pointer is None:
             pointer = self.assign_pointer()
-            self.right_pointer = pointer(
-                self.signal_plot.right_axes_manager)
-            # The following is necessary because e.g. a line pointer does not
-            # have size
-            if hasattr(self.pointer, "size"):
-                self.right_pointer.size = self.pointer.size
-            self.right_pointer.color = 'blue'
-            self.right_pointer.connect_navigate()
-            self.right_pointer.set_mpl_ax(self.navigator_plot.ax)
+            if pointer is not None:
+                self.right_pointer = pointer()
+                signal = list(self.pointer.signal_map)[0]
+                self.right_pointer.add_widget(
+                    signal,
+                    axes=signal.axes_manager.navigation_axes,
+                    color='blue'
+                    )
+                self.right_pointer.connect_navigate()
 
         if self.right_pointer is not None:
             for axis in self.axes_manager.navigation_axes[
@@ -160,7 +160,7 @@ class MPL_HyperSignal1D_Explorer(MPL_HyperExplorer):
                     axis.index_in_array] = axis
         rl = signal1d.Signal1DLine()
         rl.data_function = self.signal_data_function
-        rl.set_line_properties(color=self.right_pointer.color,
+        rl.set_line_properties(color=list(self.right_pointer.widgets)[0].color,
                                type='step')
         self.signal_plot.create_right_axis()
         self.signal_plot.add_line(rl, ax='right', connect_navigation=True)

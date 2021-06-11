@@ -201,14 +201,18 @@ class MPL_HyperExplorer:
         # no provided pointer and no already existing pointer
         if pointer is None and self.pointer is None:
             pointer = self.assign_pointer()
-            pointer = pointer()
-            pointer.color = 'red'
+            if pointer is not None:
+                pointer = pointer()
 
         self.pointer = pointer
         self.plot_navigator(**kwargs.pop('navigator_kwds', {}))
 
         if pointer is not None:
-            pointer.add_widget(signal, axes=signal.axes_manager.navigation_axes)
+            pointer.add_widget(
+                signal,
+                axes=signal.axes_manager.navigation_axes,
+                color='red'
+                )
             self.signal_data_function_kwargs['roi'] = pointer
             pointer.connect_navigate()
         self.plot_signal(**kwargs)
