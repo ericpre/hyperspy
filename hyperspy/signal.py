@@ -16,21 +16,25 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
-import copy
-import warnings
-import inspect
 from contextlib import contextmanager
+import copy
 from datetime import datetime
+from distutils.version import LooseVersion
+from functools import partial
+import inspect
 import logging
-from pint import UnitRegistry, UndefinedUnitError
-from pathlib import Path
-
-import numpy as np
-import scipy as sp
-import dask.array as da
-from matplotlib import pyplot as plt
-import traits.api as t
 import numbers
+from pathlib import Path
+import warnings
+
+import dask.array as da
+
+from matplotlib import pyplot as plt
+import numpy as np
+from pint import UnitRegistry, UndefinedUnitError
+import scipy as sp
+import traits.api as t
+
 
 from hyperspy.axes import AxesManager
 from hyperspy import io
@@ -45,12 +49,13 @@ from hyperspy.misc.utils import iterable_not_string
 from hyperspy.external.progressbar import progressbar
 from hyperspy.exceptions import SignalDimensionError, DataDimensionError
 from hyperspy.misc import rgb_tools
-from hyperspy.misc.utils import underline, isiterable
+from hyperspy.misc.utils import (
+    underline, isiterable, slugify, to_numpy, is_cupy_array
+    )
 from hyperspy.misc.hist_tools import histogram
 from hyperspy.drawing.utils import animate_legend
 from hyperspy.drawing.marker import markers_metadata_dict_to_markers
 from hyperspy.misc.slicing import SpecialSlicers, FancySlicing
-from hyperspy.misc.utils import slugify
 from hyperspy.misc.utils import is_binned # remove in v2.0
 from hyperspy.docstrings.signal import (
     ONE_AXIS_PARAMETER, MANY_AXIS_PARAMETER, OUT_ARG, NAN_FUNC, OPTIMIZE_ARG,
@@ -69,6 +74,12 @@ from hyperspy.exceptions import VisibleDeprecationWarning
 
 
 _logger = logging.getLogger(__name__)
+
+try:
+    import cupy as cp
+    CUPY_INSTALLED = True
+except ImportError:
+    CUPY_INSTALLED = False
 
 
 class ModelManager(object):
@@ -2404,6 +2415,8 @@ class BaseSignal(FancySlicing,
             if not value.ndim:
                 value = value.reshape((1,))
             self._data = value
+        elif hasattr(value, '__cuda_array_interface__'):
+            self._data = value
         else:
             self._data = np.atleast_1d(np.asanyarray(value))
 
@@ -2578,13 +2591,15 @@ class BaseSignal(FancySlicing,
             axes.append({'size': int(s), })
         return axes
 
-    def __call__(self, axes_manager=None, fft_shift=False):
+    def __call__(self, axes_manager=None, fft_shift=False, as_numpy=None):
         if axes_manager is None:
             axes_manager = self.axes_manager
-        value = np.atleast_1d(self.data.__getitem__(
-            axes_manager._getitem_tuple))
+        value = self.data.__getitem__(axes_manager._getitem_tuple)
         if isinstance(value, da.Array):
             value = np.asarray(value)
+        elif as_numpy:
+            value = to_numpy(value)
+        value = np.atleast_1d(value)
         if fft_shift:
             value = np.fft.fftshift(value)
         return value
@@ -2635,7 +2650,7 @@ class BaseSignal(FancySlicing,
                 "for plotting as a 2D signal.")
 
         self._plot.axes_manager = axes_manager
-        self._plot.signal_data_function = self.__call__
+        self._plot.signal_data_function = partial(self.__call__, as_numpy=True)
 
         if self.metadata.has_item("Signal.quantity"):
             self._plot.quantity_label = self.metadata.Signal.quantity
@@ -2647,25 +2662,26 @@ class BaseSignal(FancySlicing,
 
         def get_static_explorer_wrapper(*args, **kwargs):
             if np.issubdtype(navigator.data.dtype, np.complexfloating):
-                return np.abs(navigator())
+                return abs(navigator(as_numpy=True))
             else:
-                return navigator()
+                return navigator(as_numpy=True)
 
         def get_1D_sum_explorer_wrapper(*args, **kwargs):
             navigator = self
             # Sum over all but the first navigation axis.
             am = navigator.axes_manager
             navigator = navigator.sum(am.signal_axes + am.navigation_axes[1:])
-            return np.nan_to_num(navigator.data).squeeze()
+            nav_data = to_numpy(navigator.data)
+            return np.nan_to_num(nav_data).squeeze()
 
         def get_dynamic_explorer_wrapper(*args, **kwargs):
             navigator.axes_manager.indices = self.axes_manager.indices[
                 navigator.axes_manager.signal_dimension:]
             navigator.axes_manager._update_attributes()
             if np.issubdtype(navigator().dtype, np.complexfloating):
-                return np.abs(navigator())
+                return abs(navigator(as_numpy=True))
             else:
-                return navigator()
+                return navigator(as_numpy=True)
 
         if not isinstance(navigator, BaseSignal) and navigator == "auto":
             if self.navigator is not None:
@@ -2723,18 +2739,20 @@ class BaseSignal(FancySlicing,
                     raise ValueError(
                         "The dimensions of the provided (or stored) navigator "
                         "are not compatible with this signal.")
-            elif navigator == "slider":
-                self._plot.navigator_data_function = "slider"
+            elif isinstance(navigator, str):
+                if navigator == "slider":
+                    self._plot.navigator_data_function = "slider"
+                elif navigator == "data":
+                    if np.issubdtype(self.data.dtype, np.complexfloating):
+                        self._plot.navigator_data_function = \
+                            lambda axes_manager=None: to_numpy(abs(self.data))
+                    else:
+                        self._plot.navigator_data_function = \
+                            lambda axes_manager=None: to_numpy(self.data)
+                elif navigator == "spectrum":
+                    self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             elif navigator is None:
                 self._plot.navigator_data_function = None
-            elif navigator == "data":
-                if np.issubdtype(self.data.dtype, np.complexfloating):
-                    self._plot.navigator_data_function = lambda axes_manager=None: np.abs(
-                        self.data)
-                else:
-                    self._plot.navigator_data_function = lambda axes_manager=None: self.data
-            elif navigator == "spectrum":
-                self._plot.navigator_data_function = get_1D_sum_explorer_wrapper
             else:
                 raise ValueError(
                     'navigator must be one of "spectrum","auto", '
@@ -3457,7 +3475,12 @@ class BaseSignal(FancySlicing,
             _logger.info("{0!r} data is replaced by its optimized copy, see "
                          "optimize parameter of ``Basesignal.transpose`` "
                          "for more information.".format(self))
-            self.data = np.ascontiguousarray(self.data)
+            # `like` keyword is an experimental feature pending on acceptance
+            # of NEP 35: necessary to support cupy array
+            kw = {}
+            if LooseVersion(np.__version__) >= LooseVersion("1.20"):
+                 kw['like'] = self.data
+            self.data = np.ascontiguousarray(self.data, **kw)
 
     def _iterate_signal(self):
         """Iterates over the signal data.
@@ -4703,6 +4726,13 @@ class BaseSignal(FancySlicing,
         if show_progressbar is None:
             show_progressbar = preferences.General.show_progressbar
 
+        # Don't run in parallel with cupy array
+        if is_cupy_array(self.data):
+            if parallel:
+                _logger.warning("Multithreading disable, because the "
+                                "computation is perfomed on the GPU.")
+            parallel = False
+
         if parallel is None:
             parallel = preferences.General.parallel
 
@@ -4765,7 +4795,8 @@ class BaseSignal(FancySlicing,
             from builtins import map
 
             for ind, res in zip(range(res_data.size), map(func, zip(*iterators))):
-                res = np.asarray(res)
+                if not hasattr(res, '__array__'):
+                    res = np.asarray(res)
                 res_data.flat[ind] = res
 
                 if ragged is False:
@@ -5091,7 +5122,8 @@ class BaseSignal(FancySlicing,
 
         return None
 
-    def get_current_signal(self, auto_title=True, auto_filename=True):
+    def get_current_signal(self, auto_title=True, auto_filename=True,
+                           as_numpy=None):
         """Returns the data at the current coordinates as a
         :py:class:`~hyperspy.signal.BaseSignal` subclass.
 
@@ -5108,6 +5140,10 @@ class BaseSignal(FancySlicing,
             (which is always the case when the Signal has been read from a
             file), the filename stored in the metadata is modified by
             appending an underscore and the current indices in parentheses.
+        as_numpy : bool of None
+            Only when using cupy array. If ``True``, return the current signal
+            as numpy array. If ``None`` or ``False``, return the array type,
+            either a cupy or numpy array.
 
         Returns
         -------
@@ -5141,7 +5177,7 @@ class BaseSignal(FancySlicing,
                     marker.set_data(**key_dict)
 
         cs = self.__class__(
-            self(),
+            self(as_numpy=as_numpy),
             axes=self.axes_manager._get_signal_axes_dicts(),
             metadata=metadata.as_dictionary(),
             attributes={'_lazy': False})
@@ -6147,6 +6183,15 @@ class BaseSignal(FancySlicing,
                 mask.shape != self.axes_manager.signal_shape):
             raise ValueError("The shape of signal mask array must match "
                              "`signal_shape`.")
+
+    def to_gpu(self):
+        if not CUPY_INSTALLED:
+            raise BaseException('cupy is required.')
+        else:
+            self.data = cp.asarray(self.data)
+
+    def to_cpu(self):
+        self.data = to_numpy(self.data)
 
 
 ARITHMETIC_OPERATORS = (

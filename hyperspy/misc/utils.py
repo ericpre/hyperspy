@@ -28,6 +28,7 @@ import unicodedata
 from contextlib import contextmanager
 import importlib
 import logging
+from distutils.version import LooseVersion
 
 import numpy as np
 
@@ -1428,3 +1429,87 @@ def is_binned(signal, axis=-1):
     else:
         return signal.axes_manager[axis].is_binned
 
+
+def is_cupy_array(array):
+    """
+    Convenience function to determine if an array is a cupy array
+
+    Parameters
+    ----------
+    array : array
+        The array to determine whether it is a cupy array or not.
+
+    Returns
+    -------
+    bool
+        True if it is cupy array, False otherwise.
+
+    """
+    try:
+        import cupy as cp
+        return isinstance(array, cp.ndarray)
+    except ImportError:
+        return False
+
+def to_numpy(array):
+    """
+    Returns the array as an numpy array
+
+    Parameters
+    ----------
+    array : numpy or cupy array
+        Array to determine whether numpy or cupy should be used
+
+    Returns
+    -------
+    array : numpy.ndarray
+
+    """
+    if is_cupy_array(array):
+        import cupy as cp
+        array = cp.asnumpy(array)
+
+    return array
+
+
+def get_array_module(array):
+    """
+    Returns the array module for the given array
+
+    Parameters
+    ----------
+    array : numpy or cupy array
+        Array to determine whether numpy or cupy should be used
+
+    Returns
+    -------
+    module : module
+
+    """
+    module = np
+    try:
+        import cupy as cp
+        if isinstance(array, cp.ndarray):
+            module = cp
+    except ImportError:
+        pass
+
+    return module
+
+
+def get_numpy_kwargs(array):
+    """
+    Convenience funtion to return a dictionary containing the `like` keyword
+    if numpy>=1.20.
+
+    Note
+    ----
+    `like` keyword is an experimental feature introduced in numpy 1.20 and is
+    pending on acceptance of NEP 35
+
+    """
+    kw = {}
+    if LooseVersion(np.__version__) >= LooseVersion("1.20"):
+         kw['like'] = array
+
+    return kw

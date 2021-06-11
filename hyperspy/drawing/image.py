@@ -249,7 +249,7 @@ class ImagePlot(BlittedFigure):
                 factor = min_asp ** -1 * xaxis.size / yaxis.size
                 self._auto_scalebar = False
                 self._auto_axes_ticks = True
-        self._aspect = np.abs(factor * xaxis.scale / yaxis.scale)
+        self._aspect = abs(factor * xaxis.scale / yaxis.scale)
 
     def _calculate_vmin_max(self, data, auto_contrast=False,
                             vmin=None, vmax=None):

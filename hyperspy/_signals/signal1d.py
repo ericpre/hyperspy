@@ -174,7 +174,7 @@ def find_peaks_ohaver(y, x=None, slope_thresh=0., amp_thresh=None,
                         # centering and scaling
                         yynz = yy != 0
                         coef = np.polyfit(
-                            xxf[yynz], np.log10(np.abs(yy[yynz])), 2)
+                            xxf[yynz], np.log10(abs(yy[yynz])), 2)
                         c1 = coef[2]
                         c2 = coef[1]
                         c3 = coef[0]
@@ -187,7 +187,7 @@ def find_peaks_ohaver(y, x=None, slope_thresh=0., amp_thresh=None,
                         # of y in the sub-group of points near peak.
                         if peakgroup < 7:
                             height = np.max(yy)
-                            position = xx[np.argmin(np.abs(yy - height))]
+                            position = xx[np.argmin(abs(yy - height))]
                         else:
                             position = - ((stdev * c2 / (2 * c3)) - avg)
                             height = np.exp(c1 - c3 * (c2 / (2 * c3)) ** 2)
@@ -279,7 +279,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
             dc = dc[..., ~signal_mask]
         if navigation_mask is not None:
             dc = dc[~navigation_mask, :]
-        der = np.abs(np.diff(dc, 1, -1))
+        der = abs(np.diff(dc, 1, -1))
         n = ((~navigation_mask).sum() if navigation_mask else
              self.axes_manager.navigation_size)
 

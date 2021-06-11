@@ -34,6 +34,7 @@ from matplotlib.colors import BASE_COLORS, to_rgba
 
 import hyperspy as hs
 from hyperspy.defaults_parser import preferences
+from hyperspy.misc.utils import to_numpy
 
 
 _logger = logging.getLogger(__name__)
@@ -415,8 +416,8 @@ def _make_overlap_plot(spectra, ax, color="blue", line_style='-'):
     for spectrum_index, (spectrum, color, line_style) in enumerate(
             zip(spectra, color, line_style)):
         x_axis = spectrum.axes_manager.signal_axes[0]
-        spectrum = _transpose_if_required(spectrum, 1)
-        ax.plot(x_axis.axis, spectrum.data, color=color, ls=line_style)
+        data_to_plot = to_numpy(_transpose_if_required(spectrum, 1).data)
+        ax.plot(x_axis.axis, data_to_plot, color=color, ls=line_style)
         set_xaxis_lims(ax, x_axis)
     _set_spectrum_xlabel(spectra if isinstance(spectra, hs.signals.BaseSignal)
                          else spectra[-1], ax)
@@ -440,8 +441,8 @@ def _make_cascade_subplot(
             zip(spectra, color, line_style)):
         x_axis = spectrum.axes_manager.signal_axes[0]
         spectrum = _transpose_if_required(spectrum, 1)
-        data_to_plot = ((spectrum.data - spectrum.data.min()) /
-                        float(max_value) + spectrum_index * padding)
+        data_to_plot = to_numpy((spectrum.data - spectrum.data.min()) /
+                                float(max_value) + spectrum_index * padding)
         ax.plot(x_axis.axis, data_to_plot, color=color, ls=line_style)
         set_xaxis_lims(ax, x_axis)
     _set_spectrum_xlabel(spectra if isinstance(spectra, hs.signals.BaseSignal)
@@ -452,13 +453,13 @@ def _make_cascade_subplot(
 
 def _plot_spectrum(spectrum, ax, color="blue", line_style='-'):
     x_axis = spectrum.axes_manager.signal_axes[0]
-    ax.plot(x_axis.axis, spectrum.data, color=color, ls=line_style)
+    ax.plot(x_axis.axis, to_numpy(spectrum.data), color=color, ls=line_style)
     set_xaxis_lims(ax, x_axis)
 
 
 def _set_spectrum_xlabel(spectrum, ax):
     x_axis = spectrum.axes_manager.signal_axes[0]
-    ax.set_xlabel("%s (%s)" % (x_axis.name, x_axis.units))
+    ax.set_xlabel(f"{x_axis.name} ({x_axis.units})")
 
 
 def _transpose_if_required(signal, expected_dimension):
@@ -675,8 +676,8 @@ def plot_images(images,
     for image in im:
         if not isinstance(image, BaseSignal):
             raise ValueError("`images` must be a list of image signals or a "
-                             "multi-dimensional signal."
-                             " " + repr(type(images)) + " was given.")
+                             "multi-dimensional signal. "
+                             f"{repr(type(images))} was given.")
 
     # For list of EDS maps, transpose the BaseSignal
     if isinstance(images, (list, tuple)):
@@ -686,7 +687,7 @@ def plot_images(images,
     # copy it and put it in a list so labeling works out as (x,y) when plotting
     if isinstance(images,
                   BaseSignal) and images.axes_manager.navigation_dimension > 0:
-        images = [images._deepcopy_with_new_data(images.data)]
+        images = [images._deepcopy_with_new_data(to_numpy(images.data))]
 
     n = 0
     for i, sig in enumerate(images):
@@ -788,13 +789,9 @@ def plot_images(images,
 
         # trim off any '(' or ' ' characters at end of basename
         if div_num > 1:
-            while True:
-                if basename[len(basename) - 1] == '(':
-                    basename = basename[:-1]
-                elif basename[len(basename) - 1] == ' ':
-                    basename = basename[:-1]
-                else:
-                    break
+            basename = basename.strip()
+            if len(basename) > 1 and basename[len(basename) - 1] == '(':
+                basename = basename[:-1]
 
         # namefrac is ratio of length of basename to the image name
         # if it is high (e.g. over 0.5), we can assume that all images
@@ -825,7 +822,7 @@ def plot_images(images,
 
     elif isinstance(label, str):
         # Set label_list to an indexed list, based off of label
-        label_list = [label + " " + repr(num) for num in range(n)]
+        label_list = [f"{label} {num}" for num in range(n)]
 
     elif isinstance(label, list) and all(
             isinstance(x, str) for x in label):
@@ -906,7 +903,7 @@ def plot_images(images,
                             'The default values are used instead.')
             vmin, vmax = None, None
         vmin_max = np.array(
-            [contrast_stretching(i.data, vmin, vmax) for i in non_rgb])
+            [contrast_stretching(to_numpy(i.data), vmin, vmax) for i in non_rgb])
         _vmin, _vmax = vmin_max[:, 0].min(), vmin_max[:, 1].max()
         if next(centre_colormaps):
             _vmin, _vmax = centre_colormap_values(_vmin, _vmax)
@@ -1014,7 +1011,7 @@ def plot_images(images,
             for j, im in enumerate(ims):
                 ax = f.add_subplot(rows, per_row, idx + 1)
                 axes_list.append(ax)
-                data = im.data
+                data = to_numpy(im.data)
                 centre = next(centre_colormaps)   # get next value for centreing
 
                 # Enable RGB plotting
@@ -1060,7 +1057,7 @@ def plot_images(images,
                         factor = min_asp ** -1 * float(xaxis.size) / yaxis.size
                     else:
                         factor = 1
-                    asp = np.abs(factor * float(xaxis.scale) / yaxis.scale)
+                    asp = abs(factor * float(xaxis.scale) / yaxis.scale)
                 elif aspect == 'square':
                     asp = abs(extent[1] - extent[0]) / abs(extent[3] - extent[2])
                 elif aspect == 'equal':
