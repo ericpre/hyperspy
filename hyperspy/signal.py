@@ -2591,10 +2591,14 @@ class BaseSignal(FancySlicing,
             axes.append({'size': int(s), })
         return axes
 
-    def __call__(self, axes_manager=None, fft_shift=False, as_numpy=None):
+    def __call__(self, axes_manager=None, fft_shift=False, roi=None, as_numpy=None):
         if axes_manager is None:
             axes_manager = self.axes_manager
-        value = self.data.__getitem__(axes_manager._getitem_tuple)
+        if roi is None:
+            value = np.atleast_1d(self.data.__getitem__(
+                axes_manager._getitem_tuple))
+        else:
+            value = roi(self).sum().data
         if isinstance(value, da.Array):
             value = np.asarray(value)
         elif as_numpy:
@@ -2758,13 +2762,14 @@ class BaseSignal(FancySlicing,
                     'navigator must be one of "spectrum","auto", '
                     '"slider", None, a Signal instance')
 
-        self._plot.plot(**kwargs)
+        self._plot.plot(self, **kwargs)
         self.events.data_changed.connect(self.update_plot, [])
 
         p = self._plot.signal_plot if self._plot.signal_plot else self._plot.navigator_plot
         p.events.closed.connect(
             lambda: self.events.data_changed.disconnect(self.update_plot),
             [])
+        self._plot.connect_navigation(self.update_plot)
 
         if plot_markers:
             if self.metadata.has_item('Markers'):
