@@ -16,11 +16,12 @@
 # You should have received a copy of the GNU General Public License
 # along with  HyperSpy.  If not, see <http://www.gnu.org/licenses/>.
 
-from distutils.version import LooseVersion
-import warnings
-import logging
-import datetime
 import ast
+import datetime
+from distutils.version import LooseVersion
+import logging
+import os
+import warnings
 
 import h5py
 import numpy as np
@@ -440,7 +441,7 @@ def dict2hdfgroup(dictionary, group, **kwds):
         if tmp.dtype == np.dtype('O') or tmp.ndim != 1:
             dict2hdfgroup(dict(zip(
                 [str(i) for i in range(len(value))], value)),
-                group.create_group(_type + str(len(value)) + '_' + key),
+                group.require_group(_type + str(len(value)) + '_' + key),
                 **kwds)
         elif tmp.dtype.type is np.unicode_:
             if _type + key in group:
@@ -460,11 +461,11 @@ def dict2hdfgroup(dictionary, group, **kwds):
 
     for key, value in dictionary.items():
         if isinstance(value, dict):
-            dict2hdfgroup(value, group.create_group(key),
+            dict2hdfgroup(value, group.require_group(key),
                           **kwds)
         elif isinstance(value, DictionaryTreeBrowser):
             dict2hdfgroup(value.as_dictionary(),
-                          group.create_group(key),
+                          group.require_group(key),
                           **kwds)
         elif isinstance(value, BaseSignal):
             kn = key if key.startswith('_sig_') else '_sig_' + key
@@ -485,7 +486,7 @@ def dict2hdfgroup(dictionary, group, **kwds):
             group.attrs[key] = value
         elif isinstance(value, AxesManager):
             dict2hdfgroup(value.as_dictionary(),
-                          group.create_group('_hspy_AxesManager_' + key),
+                          group.require_group('_hspy_AxesManager_' + key),
                           **kwds)
         elif isinstance(value, list):
             if len(value):
@@ -730,14 +731,16 @@ def write_signal(signal, group, **kwds):
 
     for axis in signal.axes_manager._axes:
         axis_dict = axis.get_axis_dictionary()
-        coord_group = group.create_group(
+        coord_group = group.require_group(
             'axis-%s' % axis.index_in_array)
         dict2hdfgroup(axis_dict, coord_group, **kwds)
-    mapped_par = group.create_group(metadata)
+    mapped_par = group.require_group(metadata)
     metadata_dict = signal.metadata.as_dictionary()
-    overwrite_dataset(group, signal.data, 'data',
-                      signal_axes=signal.axes_manager.signal_indices_in_array,
-                      **kwds)
+    overwrite_data = kwds.pop('overwrite_data', True)
+    if overwrite_data:
+        overwrite_dataset(group, signal.data, 'data',
+                          signal_axes=signal.axes_manager.signal_indices_in_array,
+                          **kwds)
     if default_version < LooseVersion("1.2"):
         metadata_dict["_internal_parameters"] = \
             metadata_dict.pop("_HyperSpy")
@@ -745,14 +748,14 @@ def write_signal(signal, group, **kwds):
     # dataset and can't be used
     kwds.pop('chunks', None)
     dict2hdfgroup(metadata_dict, mapped_par, **kwds)
-    original_par = group.create_group(original_metadata)
+    original_par = group.require_group(original_metadata)
     dict2hdfgroup(signal.original_metadata.as_dictionary(), original_par,
                   **kwds)
-    learning_results = group.create_group('learning_results')
+    learning_results = group.require_group('learning_results')
     dict2hdfgroup(signal.learning_results.__dict__,
                   learning_results, **kwds)
     if hasattr(signal, 'peak_learning_results'):
-        peak_learning_results = group.create_group(
+        peak_learning_results = group.require_group(
             'peak_learning_results')
         dict2hdfgroup(signal.peak_learning_results.__dict__,
                       peak_learning_results, **kwds)
@@ -765,7 +768,7 @@ def write_signal(signal, group, **kwds):
             model.attrs['_signal'] = group.name
 
 
-def file_writer(filename, signal, *args, **kwds):
+def file_writer(filename, signal, close_file=True, **kwds):
     """Writes data to hyperspy's hdf5 format
 
     Parameters
@@ -775,28 +778,44 @@ def file_writer(filename, signal, *args, **kwds):
     *args, optional
     **kwds, optional
     """
-    with h5py.File(filename, mode='w') as f:
-        f.attrs['file_format'] = "HyperSpy"
-        f.attrs['file_format_version'] = version
-        exps = f.create_group('Experiments')
-        group_name = signal.metadata.General.title if \
-            signal.metadata.General.title else '__unnamed__'
-        # / is a invalid character, see #942
-        if "/" in group_name:
-            group_name = group_name.replace("/", "-")
-        expg = exps.create_group(group_name)
+    mode = kwds.get('mode', 'w')
+    if signal._lazy:
+        f = signal._get_file_handle()
+        # filename provided by h5py doesn't contain the full path and we need
+        # to know if the filename is in the current directory
+        path_split = os.path.split(filename)
+        # We open a new file when:
+        # - we don't save to current directory
+        # - the filename is different
+        if not path_split[0] in ['', '.'] or path_split[1] != f.filename:
+            f = h5py.File(filename, mode=mode)
+    else:
+        f = h5py.File(filename, mode=mode)
 
-        # Add record_by metadata for backward compatibility
-        smd = signal.metadata.Signal
-        if signal.axes_manager.signal_dimension == 1:
-            smd.record_by = "spectrum"
-        elif signal.axes_manager.signal_dimension == 2:
-            smd.record_by = "image"
-        else:
-            smd.record_by = ""
-        try:
-            write_signal(signal, expg, **kwds)
-        except BaseException:
-            raise
-        finally:
-            del smd.record_by
+    f.attrs['file_format'] = "HyperSpy"
+    f.attrs['file_format_version'] = version
+    exps = f.require_group('Experiments')
+    group_name = signal.metadata.General.title if \
+        signal.metadata.General.title else '__unnamed__'
+    # / is a invalid character, see #942
+    if "/" in group_name:
+        group_name = group_name.replace("/", "-")
+    expg = exps.require_group(group_name)
+
+    # Add record_by metadata for backward compatibility
+    smd = signal.metadata.Signal
+    if signal.axes_manager.signal_dimension == 1:
+        smd.record_by = "spectrum"
+    elif signal.axes_manager.signal_dimension == 2:
+        smd.record_by = "image"
+    else:
+        smd.record_by = ""
+    try:
+        write_signal(signal, expg, **kwds)
+    except BaseException:
+        raise
+    finally:
+        del smd.record_by
+    
+    if close_file:
+        f.close()
