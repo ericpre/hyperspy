@@ -1028,6 +1028,11 @@ class BaseModel(list):
         comp_values = np.zeros((n_parameters, channels_signal_shape))
         constant_term = np.zeros(channels_signal_shape)
 
+        _transform_to_linear = None
+        if len(self.active_components) == 1:
+            _transform_to_linear = getattr(self.active_components[0],
+                                           '_transform_to_linear')
+
         for component in self.active_components:
             # Components that can be separated into multiple linear parts,
             # like "C = a*x + b" may have C._constant_term != 0, eg if b is
@@ -1097,6 +1102,12 @@ class BaseModel(list):
             )
 
         target_signal = target_signal - constant_term
+
+        if _transform_to_linear:
+            # Application the transformation required for linear fitting
+            # power law, exponential component, etc.
+            comp_values = _transform_to_linear(comp_values)
+            target_signal = _transform_to_linear(target_signal)
 
         if weights is not None:
             comp_values = comp_values * weights

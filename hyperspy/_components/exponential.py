@@ -168,3 +168,7 @@ class Exponential(Expression):
             self.fetch_stored_values()
 
             return True
+
+    @property
+    def _transform_to_linear(self):
+        return np.log

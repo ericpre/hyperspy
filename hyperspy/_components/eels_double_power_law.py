@@ -128,3 +128,7 @@ class DoublePowerLaw(Expression):
         return np.where(x > self.left_cutoff.value, self.A.value *
                         (x - self.origin.value - self.shift.value) **
                         (-self.r.value), 0)
+
+    @property
+    def _transform_to_linear(self):
+        return np.log10

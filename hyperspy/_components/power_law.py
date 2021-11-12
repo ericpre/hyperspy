@@ -186,3 +186,7 @@ class PowerLaw(Expression):
         return np.where(x > self.left_cutoff.value, self.r.value *
                         (x - self.origin.value) ** (-self.r.value - 1) *
                         self.A.value, 0)
+
+    @property
+    def _transform_to_linear(self):
+        return np.log10
