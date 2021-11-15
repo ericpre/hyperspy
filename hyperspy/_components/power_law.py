@@ -189,4 +189,8 @@ class PowerLaw(Expression):
 
     @property
     def _transform_to_linear(self):
-        return np.log10
+        return np.log
+
+    @property
+    def _inv_transform_to_linear(self):
+        return np.exp

@@ -86,3 +86,42 @@ def test_function_nd(binned, lazy):
     g2.estimate_parameters(s2, axis.low_value, axis.high_value, False)
     assert g2._axes_manager[-1].is_binned == binned
     np.testing.assert_allclose(g2.function_nd(axis.axis) * factor, s2.data, rtol=0.05)
+
+
+def test_linear_fit():
+    s = Signal1D(np.empty((100,)))
+    axis = s.axes_manager.signal_axes[0]
+    axis.scale = 0.02
+    axis.offset = 1
+    g1 = PowerLaw(1000., 1.2)
+    s.data = g1.function(axis.axis)
+    s.add_gaussian_noise(1.0)
+    m = s.create_model()
+    pl = PowerLaw()
+    m.append(pl)
+    m.fit(optimizer='lstsq', calculate_errors=False)
+
+
+    import matplotlib.pyplot as plt
+    x_values = s.axes_manager[-1].axis
+
+    plt.figure()
+    plt.plot(m.comp_values.T)
+
+    plt.figure()
+    plt.plot(np.log(x_values), m.comp_values.T)
+
+    plt.figure()
+    plt.plot(np.log(x_values), m.target_signal)
+
+    plt.figure()
+    plt.plot(np.log(x_values), np.log(pl.function(x_values)))
+
+    plt.figure()
+    plt.plot(np.log(x_values), np.log(s()))
+
+    plt.figure()
+    plt.plot(np.log(pl.function(np.exp(x_values))))
+
+    plt.figure()
+    plt.plot(np.log(x_values), m(transform=np.log))

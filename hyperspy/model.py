@@ -984,19 +984,28 @@ class BaseModel(list):
             raise ValueError("Linear fitting doesn't support signal axes, "
                              "which are binned and non-uniform.")
 
-        free_nonlinear_parameters = [
-            p for c in self.active_components for p in c.parameters
-            if p.free and not p._linear
-            ]
-        if free_nonlinear_parameters:
-            raise RuntimeError(
-                "Not all free parameters are linear. Fit with a different "
-                "optimizer or set non-linear `parameters.free = False`. "
-                "Consider using `m.set_parameters_not_free(nonlinear=True)`. "
-                "These parameters are nonlinear and free:"
-                + "\n\t"
-                + str("\n\t".join(str(p) for p in free_nonlinear_parameters))
-            )
+        transform = None
+        if len(self.active_components) == 1:
+            # We have only component which can be made linear after applying
+            # the required transform
+            transform = getattr(self.active_components[0],
+                                '_transform_to_linear')
+            inv_transform = getattr(self.active_components[0],
+                                    '_inv_transform_to_linear')
+        else:
+            free_nonlinear_parameters = [
+                p for c in self.active_components for p in c.parameters
+                if p.free and not p._linear
+                ]
+            if free_nonlinear_parameters:
+                raise RuntimeError(
+                    "Not all free parameters are linear. Fit with a different "
+                    "optimizer or set non-linear `parameters.free = False`. "
+                    "Consider using `m.set_parameters_not_free(nonlinear=True)`. "
+                    "These parameters are nonlinear and free:"
+                    + "\n\t"
+                    + str("\n\t".join(str(p) for p in free_nonlinear_parameters))
+                )
 
         # We get the list of parameters; twin parameters are not free and
         # their component need be combined with the component its parameter
@@ -1028,11 +1037,6 @@ class BaseModel(list):
         comp_values = np.zeros((n_parameters, channels_signal_shape))
         constant_term = np.zeros(channels_signal_shape)
 
-        _transform_to_linear = None
-        if len(self.active_components) == 1:
-            _transform_to_linear = getattr(self.active_components[0],
-                                           '_transform_to_linear')
-
         for component in self.active_components:
             # Components that can be separated into multiple linear parts,
             # like "C = a*x + b" may have C._constant_term != 0, eg if b is
@@ -1059,11 +1063,16 @@ class BaseModel(list):
                     # to defined the position in the numpy array
                     index = parameters.index(parameter)
                     comp_values[index] = component._compute_expression_part(
-                        free[parameter.name]
+                        free[parameter.name], transform=inv_transform
                         )
-                    constant_term += component._compute_expression_part(fixed)
+                print('component._compute_expression_part(fixed)',
+                      component._compute_expression_part(fixed), inv_transform)
+                constant_term += component._compute_expression_part(
+                    fixed, transform=inv_transform
+                    )
 
             elif len(free_parameters) == 1:
+                print('here')
                 parameter = free_parameters[0]
                 if parameter.twin:
                     # to get the correct `comp_values` index, we need the twin
@@ -1071,7 +1080,8 @@ class BaseModel(list):
 
                 index = parameters.index(parameter)
                 comp_value = self.__call__(
-                    component_list=[component], binned=False
+                    component_list=[component], binned=False,
+                    transform=inv_transform,
                     )
                 comp_constant_values = component._compute_constant_term()
                 comp_values[index] += comp_value - comp_constant_values
@@ -1103,11 +1113,14 @@ class BaseModel(list):
 
         target_signal = target_signal - constant_term
 
-        if _transform_to_linear:
+        if transform:
+            print('here', transform)
             # Application the transformation required for linear fitting
             # power law, exponential component, etc.
-            comp_values = _transform_to_linear(comp_values)
-            target_signal = _transform_to_linear(target_signal)
+            comp_values = transform(comp_values)
+            target_signal = transform(target_signal)
+            self.comp_values = comp_values
+            self.target_signal = target_signal
 
         if weights is not None:
             comp_values = comp_values * weights

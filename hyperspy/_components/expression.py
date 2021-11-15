@@ -406,7 +406,7 @@ class Expression(Component):
 
         return free_pseudo_components, fixed_pseudo_components,
 
-    def _compute_expression_part(self, part):
+    def _compute_expression_part(self, part, transform=None):
         """Compute the expression for a given value or map["values"]."""
         model = self.model
         function = part['function']
@@ -422,7 +422,9 @@ class Expression(Component):
             data = convolve_component_values(
                 function(convolution_axis, *parameters), model=model)
         else:
-            axes = [ax.axis for ax in model.axes_manager.signal_axes]
+            transform = transform or (lambda x: x)
+            axes = [transform(ax.axis)
+                    for ax in model.axes_manager.signal_axes]
             mesh = np.meshgrid(*axes)
             shape = mesh[0].shape
             mesh = [m.reshape(shape + len(nav_shape)*(1,)) for m in mesh]

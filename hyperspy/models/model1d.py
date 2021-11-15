@@ -28,7 +28,6 @@ from hyperspy.exceptions import WrongObjectError, SignalDimensionError
 from hyperspy.decorators import interactive_range_selector
 from hyperspy.drawing.widgets import LabelWidget, VerticalLineWidget
 from hyperspy.events import EventSuppressor
-from hyperspy.exceptions import SignalDimensionError, WrongObjectError
 from hyperspy.model import BaseModel, ModelComponents, ModelSpecialSlicers
 from hyperspy.signal_tools import SpanSelectorInSignal1D
 from hyperspy.ui_registry import DISPLAY_DT, TOOLKIT_DT, add_gui_method
@@ -379,7 +378,7 @@ class Model1D(BaseModel):
     remove.__doc__ = BaseModel.remove.__doc__
 
     def __call__(self, non_convolved=False, onlyactive=False,
-                 component_list=None, binned=None):
+                 component_list=None, binned=None, transform=None):
         """Returns the corresponding model for the current coordinates
 
         Parameters
@@ -395,6 +394,8 @@ class Model1D(BaseModel):
         binned : bool or None
             Specify if the binned attribute of the signal axes needs to be
             taken into account.
+        transform : numpy ufunc or None
+            Define the transform required to make the model linear
 
         cursor: 1 or 2
 
@@ -413,21 +414,28 @@ class Model1D(BaseModel):
             component_list = [
                 component for component in component_list if component.active]
 
+        axis = self.axis.axis
+        if transform is not None:
+            axis = transform(axis)
+
         if self.convolved is False or non_convolved is True:
-            axis = self.axis.axis[self.channel_switches]
+            axis = axis[self.channel_switches]
             sum_ = np.zeros(len(axis))
             for component in component_list:
                 sum_ += component.function(axis)
             to_return = sum_
 
         else:  # convolved
-            sum_convolved = np.zeros(len(self.convolution_axis))
-            sum_ = np.zeros(len(self.axis.axis))
+            convolution_axis = self.convolution_axis
+            if transform is not None:
+                convolution_axis = transform(convolution_axis)
+            sum_convolved = np.zeros(len(convolution_axis))
+            sum_ = np.zeros(len(axis))
             for component in component_list:
                 if component.convolved:
-                    sum_convolved += component.function(self.convolution_axis)
+                    sum_convolved += component.function(convolution_axis)
                 else:
-                    sum_ += component.function(self.axis.axis)
+                    sum_ += component.function(axis)
 
             to_return = sum_ + np.convolve(
                 self.low_loss(self.axes_manager),
@@ -443,7 +451,7 @@ class Model1D(BaseModel):
             if self.signal.axes_manager[-1].is_uniform:
                 to_return *= self.signal.axes_manager[-1].scale
             else:
-                to_return *= np.gradient(self.signal.axes_manager[-1].axis)
+                to_return *= np.gradient(axis)
         return to_return
 
     def _errfunc(self, param, y, weights=None):
