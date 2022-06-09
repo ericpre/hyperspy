@@ -933,6 +933,13 @@ class EDSSpectrum(Signal1D):
                      axes_manager=axes_manager,
                      navigator_kwds=navigator_kwds,
                      **kwargs)
+        # When the spectrum contains the 0 energy peak, set the x limit so
+        # that the 0 energy peak is not displayed, which can be inconvenient
+        # when its intensity is much larger than other peaks
+        if self.axes_manager[-1].offset < 0.1:
+            # Set the xlimits first and call update to calculate the ylimits
+            self._plot.signal_plot.ax.set_xlim(0.1, None)
+            self._plot.signal_plot.update(render_figure=False)
         self._plot_xray_lines(xray_lines, only_lines, only_one,
                               background_windows, integration_windows,
                               render_figure=False)

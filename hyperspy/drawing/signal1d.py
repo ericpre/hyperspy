@@ -214,7 +214,7 @@ class Signal1DFigure(BlittedFigure):
         super(Signal1DFigure, self)._on_close()
         _logger.debug('Signal1DFigure Closed.')
 
-    def update(self):
+    def update(self, render_figure=True):
         """
         Update lines, markers and render at the end.
         This method is connected to the `indices_changed` event of the
@@ -241,7 +241,8 @@ class Signal1DFigure(BlittedFigure):
         if self.right_ax is not None:
             update_lines(self.right_ax, self.right_ax_lines)
 
-        self.render_figure()
+        if render_figure:
+            self.render_figure()
 
 
 class Signal1DLine(object):
