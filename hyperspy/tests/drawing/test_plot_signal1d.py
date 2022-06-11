@@ -418,3 +418,14 @@ def test_plot_empty_slice_autoscale():
     # change span selector to an "empty" slice and trigger update
     r.left = 23
     r.right = 23.1
+
+
+def test_plot_eds_x_limits():
+    s = hs.signals.EDSTEMSpectrum(np.arange(100))
+    s.axes_manager[-1].scale = 0.01
+    s.axes_manager[-1].offset = -0.25
+    s.plot()
+    assert s._plot.signal_plot.ax.get_xlim() ==  (0.1, 0.74)
+
+    s.plot(display_zero_energy_peak=True)
+    assert s._plot.signal_plot.ax.get_xlim() ==  (-0.25, 0.74)

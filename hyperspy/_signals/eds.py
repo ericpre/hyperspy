@@ -858,6 +858,7 @@ class EDSSpectrum(Signal1D):
              norm="auto",
              axes_manager=None,
              navigator_kwds={},
+             display_zero_energy_peak=False,
              **kwargs):
         """Plot the EDS spectrum. The following markers can be added
 
@@ -897,6 +898,10 @@ class EDSSpectrum(Signal1D):
             'estimate_integration_windows'.
             Else provide an array for which each row corresponds to a X-ray
             line. Each row contains the left and right value of the window.
+        display_zero_energy_peak : bool
+            If True, the zero energy peak is displayed otherwise, the EDS
+            spectrum is displayed with energy starting from 0.1 keV.
+            Default is False.
         %s
         %s
 
@@ -936,7 +941,7 @@ class EDSSpectrum(Signal1D):
         # When the spectrum contains the 0 energy peak, set the x limit so
         # that the 0 energy peak is not displayed, which can be inconvenient
         # when its intensity is much larger than other peaks
-        if self.axes_manager[-1].offset < 0.1:
+        if not display_zero_energy_peak and self.axes_manager[-1].offset < 0.1:
             # Set the xlimits first and call update to calculate the ylimits
             self._plot.signal_plot.ax.set_xlim(0.1, None)
             self._plot.signal_plot.update(render_figure=False)
