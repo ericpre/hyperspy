@@ -51,6 +51,11 @@ jobs:
         run: |
           conda list
 
+      - name: Install RosettasScIO
+        shell: bash
+        run: |
+          pip install git+https://github.com/hyperspy/rosettasciio.git#egg=rosettasciio[all]
+
       - name: Install HyperSpy
         run: |
           pip install .

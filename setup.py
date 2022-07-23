@@ -80,9 +80,6 @@ extras_require = {
                  'scikit-learn;sys_platform!="darwin"'],
     "gui-jupyter": ["hyperspy_gui_ipywidgets>=1.1.0"],
     "gui-traitsui": ["hyperspy_gui_traitsui>=1.1.0"],
-    "speed": ["cython", "imagecodecs>=2020.1.31"],
-    "usid": ["pyUSID>=0.0.7", "sidpy"],
-    "scalebar": ["matplotlib-scalebar"],
     # bug in pip: matplotib is ignored here because it is already present in
     # install_requires.
     "tests": ["pytest>=3.6", "pytest-mpl", "pytest-xdist", "pytest-rerunfailures", "pytest-instafail", "matplotlib>=3.1"],
