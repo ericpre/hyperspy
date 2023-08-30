@@ -298,6 +298,7 @@ towncrier_draft_working_directory = ".."
 intersphinx_mapping = {
     'cupy': ('https://docs.cupy.dev/en/stable', None),
     'dask': ('https://docs.dask.org/en/latest', None),
+    #'holospy': ('https://hyperspy.org/holospy/', None),
     'h5py': ('https://docs.h5py.org/en/stable', None),
     'IPython': ('https://ipython.readthedocs.io/en/stable', None),
     'matplotlib': ('https://matplotlib.org', None),

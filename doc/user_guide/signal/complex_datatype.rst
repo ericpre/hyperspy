@@ -72,8 +72,9 @@ display of the plot respectively. The last one is especially useful in order to
 zoom into specific regions of the plot or to limit the plot in case of noisy
 data points.
 
-An example of calculation of Aragand diagram is :ref:`shown for electron
-holography data <holo.argand-example>`.
+An example of calculating an Aragand diagram is shown in the 
+:external+holospy:ref:`HoloSpy user guide<holo.argand-example>` for electron
+holography data.
 
 Add a linear phase ramp
 ^^^^^^^^^^^^^^^^^^^^^^^
