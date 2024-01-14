@@ -32,6 +32,7 @@ except ValueError:
 # pytest-mpl 0.7 already import pyplot, so setting the matplotlib backend to
 # 'agg' as early as we can is useless for testing.
 import matplotlib.pyplot as plt
+from matplotlib.testing.conftest import mpl_test_settings
 
 import pytest
 import numpy as np
