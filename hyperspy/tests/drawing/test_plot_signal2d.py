@@ -864,6 +864,7 @@ def test_plot_subfigures_change_navigation_indices():
     hs.preferences.Plot.use_subfigure = True
     s.plot()
     s.axes_manager.indices = (1, 2, 3)
+    hs.preferences.Plot.use_subfigure = False
 
 
 def test_plot_images_bool():

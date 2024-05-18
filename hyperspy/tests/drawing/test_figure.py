@@ -160,6 +160,7 @@ def test_subfigure_preferences_setting():
     else:
         s.plot()
     s._plot.close()
+    hs.preferences.Plot.use_subfigure = False
 
 
 @pytest.mark.skipif(
@@ -190,13 +191,13 @@ def test_subfigure_get_mpl_figure():
     assert isinstance(s._plot.signal_plot.get_mpl_figure(), matplotlib.figure.Figure)
     assert isinstance(s._plot.signal_plot.figure, matplotlib.figure.SubFigure)
     s._plot.signal_plot.close()
+    hs.preferences.Plot.use_subfigure = False
 
 
 def test_separate_figure_get_mpl_figure():
     rng = np.random.default_rng()
     s = Signal1D(rng.random((10, 10, 10)))
 
-    hs.preferences.Plot.use_subfigure = False
     s.plot()
     assert isinstance(s._plot.signal_plot.get_mpl_figure(), matplotlib.figure.Figure)
     assert isinstance(s._plot.signal_plot.figure, matplotlib.figure.Figure)
