@@ -1298,8 +1298,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
 
     def remove_baseline(
         self,
-        interactive=True,
-        algorithm="iasls",
+        algorithm=None,
         inplace=True,
         display=True,
         toolkit=None,
@@ -1308,7 +1307,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
         """
         Remove baselines using algorithm implemented in pybaselines.
         """
-        if interactive:
+        if algorithm is None:
             from hyperspy.utils.baseline_removal_tool import BaselineRemoval
 
             br = BaselineRemoval(self, algorithm=algorithm, **kwargs)

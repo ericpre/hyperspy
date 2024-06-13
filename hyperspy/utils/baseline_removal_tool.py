@@ -63,17 +63,18 @@ algorithms_parameters = {
         "diff_order",
         "symmetric",
     ),
-    "irsqr": ("lam", "quantile", "p", "num_knots", "spline_degree", "diff_order"),
+    "irsqr": ("lam", "quantile", "num_knots", "spline_degree", "diff_order"),
 }
-# Penalized splines version of whittaker
-algorithms_parameters_splines = {
-    f"pspline_{algorithm}": algorithms_parameters[algorithm]
-    + ("num_knots", "spline_degree")
-    for algorithm in algorithms_mapping_whittaker.values()
-}
-algorithms_parameters.update(algorithms_parameters_splines)
+# # Penalized splines version of whittaker
+# algorithms_parameters_splines = {
+#     f"pspline_{algorithm}": algorithms_parameters[algorithm]
+#     + ("num_knots", "spline_degree")
+#     for algorithm in algorithms_mapping_whittaker.values()
+# }
+# algorithms_parameters.update(algorithms_parameters_splines)
 
 algorithms_mapping_inverse = {v: k for k, v in algorithms_mapping.items()}
+# Get the mapping of parameters to algorithms
 parameters_algorithms = {}
 for parameter in set(itertools.chain(*algorithms_parameters.values())):
     algorithm_list = [
@@ -100,13 +101,14 @@ class BaselineRemoval(t.HasTraits):
     p = t.Range(0.0, 1.0, value=0.5, exclude_low=True, exclude_high=True)
     eta = t.Range(0.0, 1.0, value=0.5)
     diff_order = t.Range(1, 3, value=2)
-    penalized_spline_version = t.Bool()
+    penalized_spline = t.Bool()
     # Spline parameters
-    num_knots = t.Range(10, 1000)
+    num_knots = t.Range(10, 10000, value=100)
     spline_degree = t.Range(1, 5, value=3)
     symmetric = t.Bool()
     # Polynomial parameters
     poly_order = t.Range(1, 10)
+    quantile = t.Range(0.001, 0.5, value=0.05)
 
     # use to know if parameters needs to be enable or not
     # workaround for traitsui which doesn't support evaluation of more than
@@ -115,13 +117,13 @@ class BaselineRemoval(t.HasTraits):
     _enable_p = t.Bool()
     _enable_lam_1 = t.Bool()
     _enable_eta = t.Bool()
-    # Spline parameters
-    _enable_penalized_spline = t.Bool()
 
     def __init__(self, signal, algorithm="Asymmetric Least Squares"):
         super().__init__()
         self.signal = signal
-        self.signal.plot()
+        # Plot the signal if not already plotted
+        if signal._plot is None or not signal._plot.is_active:
+            self.signal.plot()
         self.bl_line = None  # The baseline line
         self.estimator = None
         self.estimator_line = None
@@ -130,28 +132,48 @@ class BaselineRemoval(t.HasTraits):
     def set_estimator(self):
         from pybaselines import Baseline
 
+        algorithm = self._get_algorithm_name()
+
         self.estimator = getattr(
             Baseline(
                 self.signal.axes_manager[-1].axis,
                 check_finite=False,
             ),
-            algorithms_mapping[self.algorithm],
+            self._get_algorithm_name(),
         )
-        self._enable_p = self.algorithm in parameters_algorithms["p"]
-        self._enable_lam_1 = self.algorithm in parameters_algorithms["lam_1"]
-        self._enable_eta = self.algorithm in parameters_algorithms["eta"]
-        self._enable_num_knots = self.algorithm in parameters_algorithms["num_knots"]
+
+        algorithm = self._get_algorithm_name(False)
+
+        self._enable_p = algorithm in parameters_algorithms["p"]
+        self._enable_lam_1 = algorithm in parameters_algorithms["lam_1"]
+        self._enable_eta = algorithm in parameters_algorithms["eta"]
+        self._enable_num_knots = algorithm in parameters_algorithms["num_knots"]
+        self._update_lines()
+
+    def _penalized_spline_changed(self, old, new):
+        self.set_estimator()
         self._update_lines()
 
     def _algorithm_changed(self, old, new):
         self.set_estimator()
         self._update_lines()
 
+    def _get_algorithm_name(self, with_prefix=True):
+        algorithm = algorithms_mapping[self.algorithm]
+        if (
+            self.penalized_spline
+            and with_prefix
+            and self.algorithm not in algorithms_mapping_splines
+        ):
+            algorithm = "pspline_" + algorithm
+
+        return algorithm
+
     def _get_kwargs(self):
-        kwargs = {
-            key: getattr(self, key)
-            for key in algorithms_parameters[algorithms_mapping[self.algorithm]]
-        }
+        args_name = algorithms_parameters[self._get_algorithm_name(False)]
+        if self.penalized_spline:
+            args_name += ("num_knots", "spline_degree")
+        kwargs = {key: getattr(self, key) for key in args_name}
         return kwargs
 
     def _baseline_to_plot(self, *args, **kwargs):
@@ -189,7 +211,6 @@ class BaselineRemoval(t.HasTraits):
 
     def apply(self):
         self.signal.remove_baseline(
-            interactive=False,
             algorithm=algorithms_mapping[self.algorithm],
             inplace=True,
             **self._get_kwargs(),
