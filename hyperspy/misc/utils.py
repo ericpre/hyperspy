@@ -1642,8 +1642,8 @@ def display(obj):
 
 
 class TupleSA(tuple):
-    """A tuple that can set the attributes of its items
-    """
+    """A tuple that can set the attributes of its items"""
+
     def __getitem__(self, *args, **kwargs):
         item = super().__getitem__(*args, **kwargs)
         try:
@@ -1651,20 +1651,39 @@ class TupleSA(tuple):
         except TypeError:
             return item
 
+    def _check_attr(self, name):
+        # list of item that doesn't have the attribute
+        no_attr = [item for item in self if not hasattr(item, name)]
+        if no_attr:
+            raise AttributeError(f"'The items {no_attr} have not attribute '{name}'")
+
     def __setattr__(self, name, value):
-        no_name = [item
-                   for item in self
-                   if not hasattr(item, name)]
-        if no_name:
-            raise AttributeError(
-                f"'The items {no_name} have not attribute '{name}'")
+        self._check_attr(name)
+        if isiterable(value) and not isinstance(value, str):
+            for item, value_ in zip(self, value):
+                setattr(item, name, value_)
         else:
-            if isiterable(value) and not isinstance(value, str):
-                for item, value_ in zip(self, value):
-                    setattr(item, name, value_)
-            else:
-                for item in self:
-                    setattr(item, name, value)
+            for item in self:
+                setattr(item, name, value)
+
+    def __getattr__(self, name):
+        # mirror tuple behaviour for dunder methods and "count"/"index"
+        if name in tuple.__dict__.keys():
+            return getattr(self, name)
+        # For other dunder method, raise an error instead of returning the
+        # one from the items (in case they exists) to keep tuple behaviour
+        elif name.startswith("__"):
+            raise AttributeError(f"''TupleSA' object has no attribute '{name}'")
+        self._check_attr(name)
+
+        values = tuple(getattr(item, name) for item in self)
+        # when all values of the list are equal, returns the value
+        # instead of the list to be consistent with the syntax of
+        # setting a single element
+        if all(x == values[0] for x in values):
+            values = values[0]
+
+        return values
 
     def __add__(self, *args, **kwargs):
         return type(self)(super().__add__(*args, **kwargs))
