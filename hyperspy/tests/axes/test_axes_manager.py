@@ -131,6 +131,31 @@ class TestAxesManager:
             axis = BaseDataAxis()
             am[axis]
 
+    @pytest.mark.parametrize("axes", ("navigation", "signal"))
+    def test_indexing_nav_sig_axes(self, axes):
+        if axes == "navigation":
+            axes = self.am.navigation_axes
+            assert axes.scale == (1e6, 1.3)
+            assert axes.name == ("d", "a")
+        else:
+            axes = self.am.signal_axes
+            assert axes.scale == (100.0, 6.0)
+            assert axes.name == ("c", "b")
+
+        # test with numbers
+        axes.scale = 0.1
+        assert axes.scale == 0.1
+
+        axes.scale = (0.2, 0.4)
+        assert axes.scale == (0.2, 0.4)
+
+        # test with strings
+        axes.name = ("a0", "a1")
+        assert axes.name == ("a0", "a1")
+
+        axes.name = "aa"
+        assert axes.name == "aa"
+
 
 class TestAxesManagerScaleOffset:
     def test_low_high_value(self):

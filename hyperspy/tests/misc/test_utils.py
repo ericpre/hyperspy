@@ -16,12 +16,15 @@
 # You should have received a copy of the GNU General Public License
 # along with HyperSpy. If not, see <https://www.gnu.org/licenses/#GPL>.
 
+from copy import deepcopy
+
 import dask.array as da
 import numpy as np
 import pytest
 
 from hyperspy import signals
 from hyperspy.misc.utils import (
+    TupleSA,
     closest_power_of_two,
     fsdict,
     get_array_module,
@@ -174,3 +177,94 @@ def test_get_array_module():
 def test_get_array_module_cupy():
     cp_array = cp.array([0, 1, 2])
     assert get_array_module(cp_array) == cp
+
+
+class DummyObject:
+    _attr0 = None
+
+    @property
+    def attr0(self):
+        return self._attr0
+
+    @attr0.setter
+    def attr0(self, value):
+        self._attr0 = value
+
+    def __deepcopy__(self, memo):
+        obj = self.__class__()
+        obj.attr0 = self.attr0
+        return obj
+
+
+def test_tuplesa():
+    a = DummyObject()
+    b = DummyObject()
+    tuple_sa0 = TupleSA((a, b))
+
+    assert tuple_sa0.attr0 is None
+    with pytest.raises(AttributeError):
+        tuple_sa0.attr1
+
+    # test with numbers
+    tuple_sa0.attr0 = 0.1
+    assert tuple_sa0.attr0 == 0.1
+
+    tuple_sa0.attr0 = (0.2, 0.4)
+    assert tuple_sa0.attr0 == (0.2, 0.4)
+
+    # test with strings
+    tuple_sa0.attr0 = ("a0", "a1")
+    assert tuple_sa0.attr0 == ("a0", "a1")
+
+    tuple_sa0.attr0 = "aa"
+    assert tuple_sa0.attr0 == "aa"
+
+
+def test_tuplesa_deepcopy():
+    a = DummyObject()
+    b = DummyObject()
+    tuple_sa0 = TupleSA((a, b))
+    tuple_sa0.attr0 = 10
+
+    # check that we don't use the __deepcopy__ of the items
+    # tuple doesn't `__deepcopy__` method
+    assert not hasattr(tuple_sa0, "__deepcopy__")
+
+    tuple_sa1 = deepcopy(tuple_sa0)
+    assert id(tuple_sa1) != id(tuple_sa0)
+    for i in range(2):
+        assert tuple_sa1[i].attr0 == tuple_sa0[i].attr0
+
+
+def test_tuplesa_indexing():
+    a = DummyObject()
+    b = DummyObject()
+    tuple_sa0 = TupleSA((a, b))
+
+    assert isinstance(tuple_sa0[0], DummyObject)
+    assert tuple_sa0[0] == a
+    assert tuple_sa0[1] == b
+
+
+def test_tuplesa_slicing():
+    a = DummyObject()
+    b = DummyObject()
+    c = DummyObject()
+    tuple_sa0 = TupleSA((a, b, c))
+
+    assert isinstance(tuple_sa0[:], TupleSA)
+    assert tuple_sa0[:] == TupleSA((a, b, c))
+    assert tuple_sa0[:2] == TupleSA((a, b))
+
+
+def test_tuplesa_operation():
+    a = DummyObject()
+    b = DummyObject()
+    c = DummyObject()
+    d = DummyObject()
+    tuple_sa0 = TupleSA((a, b))
+    tuple_sa1 = TupleSA((c, d))
+
+    assert tuple_sa0 + tuple_sa1 == TupleSA((a, b, c, d))
+
+    assert tuple_sa0 * 2 == TupleSA((a, b, a, b))

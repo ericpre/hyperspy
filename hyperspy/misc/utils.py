@@ -1649,6 +1649,8 @@ class TupleSA(tuple):
         try:
             return type(self)(item)
         except TypeError:
+            # for single item case, e.g. a[0]
+            # TupleSA requires an iterable item
             return item
 
     def _check_attr(self, name):
