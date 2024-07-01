@@ -16,12 +16,14 @@
 # You should have received a copy of the GNU General Public License
 # along with HyperSpy. If not, see <https://www.gnu.org/licenses/#GPL>.
 
+import importlib
 import sys
 from unittest import mock
 
 import numpy as np
 import pytest
 
+import hyperspy.api as hs
 from hyperspy import signals
 from hyperspy.decorators import lazifyTestClass
 from hyperspy.drawing._markers.points import Points
@@ -398,3 +400,46 @@ def test_reduction_axes(axis):
         assert s2.data.shape == (4, 5)
     if axis == "sig":
         assert s2.data.shape == (2, 3)
+
+
+@pytest.mark.parametrize("lazy", (False, True))
+def test_remove_spikes(lazy):
+    dask_image_spec = importlib.util.find_spec("dask_image")
+    if lazy and dask_image_spec is None:
+        pytest.skip("`dask_image` is required.")
+
+    s = hs.data.two_gaussians()
+    if lazy:
+        s = s.as_lazy()
+        # dask-image values are slightly different
+        expected_value = (261, 224, 752)
+    else:
+        expected_value = (271, 234, 769)
+
+    # Add spikes
+    s.data[10, 5, 800] = 750  # initial value is 310
+    s.data[10, 20, 200] = 200000  # initial value is 220
+    s.data[15, 25, 500] = 5000000  # initial value is 764
+
+    s.remove_spikes()
+    s2_data = s.data
+    if lazy:
+        s2_data = s2_data.compute()
+    assert s2_data[10, 5, 800] == 750
+    assert s2_data[10, 20, 200] == expected_value[1]
+    assert s2_data[15, 25, 500] == expected_value[2]
+
+    s.remove_spikes(threshold_factor=3.5)
+    s3_data = s.data
+    if lazy:
+        s3_data = s3_data.compute()
+    assert s3_data[10, 5, 800] == expected_value[0]
+    assert s3_data[10, 20, 200] == expected_value[1]
+    assert s3_data[15, 25, 500] == expected_value[2]
+
+    if lazy:
+        s.compute()
+
+    np.testing.assert_allclose(
+        s.data.sum(), hs.data.two_gaussians().data.sum(), rtol=1e-6
+    )
