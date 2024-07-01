@@ -7189,11 +7189,8 @@ class BaseSignal(
 
         Returns
         -------
-        spikes_number : int
-            The number of spikes removed
-        (signal, spikes_number) : (subclass of BaseSignal, int)
-            If ``inplace=False``, the signal with removed spikes and number
-            of spikes removed.
+        signal : subclass of BaseSignal
+            If ``inplace=False``, the signal with removed spikes.
 
         See Also
         --------
@@ -7207,19 +7204,21 @@ class BaseSignal(
 
         Add spikes
 
-        >>> s.data[10, 5, 800] = 1000
-        >>> s.data[10, 20, 200] = 200000
-        >>> s.data[15, 25, 500] = 5000000
+        >>> s.data[10, 5, 800] = 750
+        >>> s.data[10, 20, 200] = 2000
+        >>> s.data[15, 25, 500] = 50000
 
         >>> s.remove_spikes()
-        2
 
-        With the default ``threshold_factor`` value of 10, the two largest
-        spikes (values of 2000 and 5000) have been removed but not the
-        smallest one (value of 1000).
+        With the default ``threshold_factor`` value of 5, the two largest
+        spikes (values of 2000 and 50000) have been removed but not the
+        smallest one (value of 750).
 
-        >>> s.remove_spikes(threshold_factor=3)
-        1
+        >>> s.remove_spikes(threshold_factor=3.5)
+
+        Parameters can be passed for the calculation of the median filter
+
+        >>> s.remove_spikes(size=5)
         """
         if np.any(np.isnan(self.data)):
             raise ValueError("Data containing `nan` are not supported.")
@@ -7245,23 +7244,24 @@ class BaseSignal(
         kwargs.setdefault("size", 3)
 
         if self._lazy:
-            import dask_image
+            try:
+                from dask_image import ndfilters
 
-            med = dask_image.ndfilters.median_filter(self.data, **kwargs)
+                med = ndfilters.median_filter(self.data, **kwargs)
+            except ImportError:
+                raise RuntimeError("`dask_image is required to remove spikes lazily.")
         else:
             med = scipy.ndimage.median_filter(self.data, axes=axes, **kwargs)
         std = np.std(self.data, axis=axes)
 
         threshold = med + std * threshold_factor
-        spikes_indices = np.argwhere(self.data > threshold)
         corrected_data = np.where(self.data > threshold, med, self.data)
 
         if inplace:
             self.data[:] = corrected_data
             self.events.data_changed.trigger(obj=self)
-            return len(spikes_indices)
         else:
-            return self._deepcopy_with_new_data(corrected_data), len(spikes_indices)
+            return self._deepcopy_with_new_data(corrected_data)
 
 
 ARITHMETIC_OPERATORS = (
