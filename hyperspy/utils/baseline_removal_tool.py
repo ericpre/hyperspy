@@ -130,6 +130,8 @@ class BaselineRemoval(t.HasTraits):
     _enable_p = t.Bool()
     _enable_lam_1 = t.Bool()
     _enable_eta = t.Bool()
+    _enable_poly_order = t.Bool()
+    _enable_penalized_spline = t.Bool()
 
     def __init__(self, signal, algorithm="Asymmetric Least Squares"):
         super().__init__()
@@ -160,6 +162,10 @@ class BaselineRemoval(t.HasTraits):
         self._enable_lam_1 = algorithm in parameters_algorithms["lam_1"]
         self._enable_eta = algorithm in parameters_algorithms["eta"]
         self._enable_num_knots = algorithm in parameters_algorithms["num_knots"]
+        self._enable_poly_order = algorithm in algorithms_mapping_polynomial.values()
+        self._enable_penalized_spline = (
+            algorithm in algorithms_mapping_whittaker.values()
+        )
         self._update_lines()
 
     def _penalized_spline_changed(self, old, new):
