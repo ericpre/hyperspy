@@ -664,7 +664,7 @@ class Model1D(BaseModel):
 
         l2 = hyperspy.drawing.signal1d.Signal1DLine()
         l2.data_function = self._model2plot
-        l2.set_line_properties(color="blue", type="line")
+        l2.set_line_properties(color="blue", type="dash")
         # Add the line to the figure
         _plot.signal_plot.add_line(l2)
         l2.plot()

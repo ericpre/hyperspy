@@ -1652,7 +1652,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
         for c in autoscale:
             if c not in ["x", "v"]:
                 raise ValueError(
-                    "`autoscale` only accepts 'x', 'v' as " "valid characters."
+                    "`autoscale` only accepts 'x', 'v' as valid characters."
                 )
         super().plot(
             navigator=navigator,
