@@ -23,6 +23,7 @@ import pytest
 
 import hyperspy.api as hs
 from hyperspy.decorators import lazifyTestClass
+from hyperspy.misc.hist_tools import histogram
 
 
 def generate_bad_toy_data():
@@ -73,6 +74,20 @@ def test_unsupported_lazy():
         s1.get_histogram(bins="sturges")
 
 
+@pytest.mark.parametrize("density", (True, False))
+@pytest.mark.parametrize("lazy", (True, False))
+def test_histogram_metadata(lazy, density):
+    s1 = generate_bad_toy_data()
+    if lazy:
+        s1 = s1.as_lazy()
+    s1.metadata.Signal.quantity = "Intensity (Count)"
+    out = s1.get_histogram(bins=200, density=density)
+    assert out.axes_manager[-1].name == "Intensity"
+    assert out.axes_manager[-1].units == "Count"
+    quantity = "Probability density" if density else "Count"
+    assert out.metadata.Signal.quantity == quantity
+
+
 @lazifyTestClass
 class TestHistogramBinMethodsBadDataset:
     def setup_method(self, method):
@@ -96,3 +111,20 @@ class TestHistogramBinMethodsBadDataset:
     def test_working_bins(self, bins, size):
         out = self.s1.get_histogram(bins=bins)
         assert out.data.shape == size
+
+    def test_range_bins(self, caplog):
+        # when falling back to capping the number of bins to 250, make sure
+        # that the kwargs are passed correctly
+        with caplog.at_level(logging.WARNING):
+            out = self.s1.get_histogram(range_bins=[1e-10, 0.5])
+
+        axis = out.axes_manager[-1].axis
+        np.testing.assert_allclose(axis[0], 1e-10)
+        np.testing.assert_allclose(axis[-1], 0.498)
+
+
+def test_histogram_dask_array_fallback():
+    s = generate_bad_toy_data().as_lazy()
+    out, bins = histogram(s.data, bins=10)
+    assert bins.shape == (11,)
+    np.testing.assert_allclose(out, [5014, 56, 32, 24, 20, 12, 12, 12, 8, 10])
