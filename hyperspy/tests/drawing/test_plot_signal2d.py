@@ -825,6 +825,15 @@ def test_plot_images_overlay_vmin_warning(caplog):
     assert "`vmin` is ignored when overlaying images." in caplog.text
 
 
+def test_plot_images_overlay_signals():
+    s = hs.signals.Signal2D(np.arange(10 * 10).reshape(10, 10))
+
+    hs.plot.plot_images(s, overlay=True)
+
+    s = hs.stack([s, -s])
+    hs.plot.plot_images(s, overlay=True)
+
+
 def test_plot_scalebar_error():
     s = hs.signals.Signal2D(np.arange(100).reshape(10, 10))
     with pytest.raises(ValueError):
@@ -995,3 +1004,29 @@ def test_plot_images_axes_ticks(axes_decor):
     assert np.allclose(plot_ax.get_yticks(), plot_images_ax.get_yticks())
     assert np.allclose(plot_ax.get_xlim(), plot_images_ax.get_xlim())
     assert np.allclose(plot_ax.get_ylim(), plot_images_ax.get_ylim())
+
+
+@pytest.mark.mpl_image_compare(
+    baseline_dir=baseline_dir, tolerance=default_tol, style=style_pytest_mpl
+)
+def test_plot_image_ax():
+    s = hs.signals.Signal2D(np.arange(100).reshape(10, 10))
+    s2 = -s
+
+    fig, ax = plt.subplots(ncols=2, nrows=1)
+    s_ = hs.stack([s, s2])
+    # axes_decor="off" to avoid ticks warning
+    hs.plot.plot_images(s_, ax=ax, axes_decor="off")
+
+    with pytest.raises(ValueError):
+        # ax can't be iterable with overlay=True
+        hs.plot.plot_images([s, s2], ax=ax, overlay=True)
+
+    fig, ax = plt.subplots(ncols=1, nrows=1)
+    hs.plot.plot_images([s, s2], ax=ax, overlay=True)
+
+    fig, ax = plt.subplots(ncols=3, nrows=1)
+    # axes_decor="off" to avoid ticks warning
+    hs.plot.plot_images([s, s2], ax=ax[1:], axes_decor="off")
+
+    return fig
