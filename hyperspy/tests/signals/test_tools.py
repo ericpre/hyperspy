@@ -16,12 +16,13 @@
 # You should have received a copy of the GNU General Public License
 # along with HyperSpy. If not, see <https://www.gnu.org/licenses/#GPL>.
 
-import importlib
 import sys
 from unittest import mock
 
 import numpy as np
 import pytest
+import scipy
+from packaging.version import Version
 
 import hyperspy.api as hs
 from hyperspy import signals
@@ -404,9 +405,10 @@ def test_reduction_axes(axis):
 
 @pytest.mark.parametrize("lazy", (False, True))
 def test_remove_spikes(lazy):
-    dask_image_spec = importlib.util.find_spec("dask_image")
-    if lazy and dask_image_spec is None:
-        pytest.skip("`dask_image` is required.")
+    if lazy:
+        pytest.importorskip("dask_image")
+    else:
+        pytest.importorskip("scipy", minversion="1.11")
 
     s = hs.data.two_gaussians()
     if lazy:
@@ -443,3 +445,10 @@ def test_remove_spikes(lazy):
     np.testing.assert_allclose(
         s.data.sum(), hs.data.two_gaussians().data.sum(), rtol=1e-6
     )
+
+
+def test_remove_spikes_min_version_scipy_error():
+    s = hs.data.two_gaussians()
+    if Version(scipy.__version__) < Version("1.11"):
+        with pytest.raises(ImportError):
+            s.remove_spikes()

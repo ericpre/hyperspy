@@ -34,6 +34,7 @@ import scipy
 import traits.api as t
 from dask.diagnostics import ProgressBar
 from matplotlib import pyplot as plt
+from packaging.version import Version
 from pint import UndefinedUnitError
 from rsciio.utils import rgb_tools
 from rsciio.utils.tools import ensure_directory
@@ -7252,6 +7253,8 @@ class BaseSignal(
             except ImportError:
                 raise RuntimeError("`dask_image is required to remove spikes lazily.")
         else:
+            if Version(scipy.__version__) < Version("1.11"):
+                raise ImportError("`scipy` >= 1.11 is required.")
             med = scipy.ndimage.median_filter(self.data, axes=axes, **kwargs)
         std = np.std(self.data, axis=axes)
 
