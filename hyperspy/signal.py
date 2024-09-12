@@ -30,11 +30,9 @@ from pathlib import Path
 
 import dask.array as da
 import numpy as np
-import scipy
 import traits.api as t
 from dask.diagnostics import ProgressBar
 from matplotlib import pyplot as plt
-from packaging.version import Version
 from pint import UndefinedUnitError
 from rsciio.utils import rgb_tools
 from rsciio.utils.tools import ensure_directory
@@ -77,6 +75,7 @@ from hyperspy.exceptions import (
     SignalDimensionError,
     VisibleDeprecationWarning,
 )
+from hyperspy.external.scipy.ndfilters import _get_footprint
 from hyperspy.interactive import interactive
 from hyperspy.io import assign_signal_subclass
 from hyperspy.io import save as io_save
@@ -7226,10 +7225,6 @@ class BaseSignal(
             raise ValueError("Data containing `nan` are not supported.")
 
         if axes is not None:
-            if self._lazy:
-                raise ValueError(
-                    "The `axes` argument is not supported for lazy signal."
-                )
             axes = self.axes_manager[axes]
             if not np.iterable(axes):
                 axes = (axes,)
@@ -7247,16 +7242,18 @@ class BaseSignal(
 
         if self._lazy:
             try:
-                from dask_image import ndfilters
+                from dask_image.ndfilters import median_filter
 
-                med = ndfilters.median_filter(self.data, **kwargs)
             except ImportError:
                 raise RuntimeError("`dask_image is required to remove spikes lazily.")
         else:
-            if Version(scipy.__version__) < Version("1.11"):
-                raise ImportError("`scipy` >= 1.11 is required.")
-            med = scipy.ndimage.median_filter(self.data, axes=axes, **kwargs)
-        std = np.std(self.data, axis=axes)
+            from scipy.ndimage import median_filter
+
+        footprint = _get_footprint(self.data, axes=axes, **kwargs)
+        kwargs.pop("size")
+
+        med = median_filter(self.data, footprint=footprint, **kwargs)
+        std = np.std(self.data, axis=axes, keepdims=True)
 
         threshold = med + std * threshold_factor
         corrected_data = np.where(self.data > threshold, med, self.data)

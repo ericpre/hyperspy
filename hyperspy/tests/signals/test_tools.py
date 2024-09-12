@@ -403,25 +403,28 @@ def test_reduction_axes(axis):
         assert s2.data.shape == (2, 3)
 
 
+@pytest.mark.parametrize("signal_dimension", (1, 2))
 @pytest.mark.parametrize("lazy", (False, True))
-def test_remove_spikes(lazy):
+def test_remove_spikes(signal_dimension, lazy):
     if lazy:
         pytest.importorskip("dask_image")
     else:
         pytest.importorskip("scipy", minversion="1.11")
 
     s = hs.data.two_gaussians()
+    # Add spikes
+    s.data[10, 5, 800] = 750  # initial value is 310
+    s.data[10, 20, 200] = 200000  # initial value is 220
+    s.data[15, 25, 500] = 5000000  # initial value is 764
+
+    if signal_dimension == 2:
+        s = s.T
     if lazy:
         s = s.as_lazy()
         # dask-image values are slightly different
         expected_value = (261, 224, 752)
     else:
         expected_value = (271, 234, 769)
-
-    # Add spikes
-    s.data[10, 5, 800] = 750  # initial value is 310
-    s.data[10, 20, 200] = 200000  # initial value is 220
-    s.data[15, 25, 500] = 5000000  # initial value is 764
 
     s.remove_spikes()
     s2_data = s.data
@@ -447,8 +450,30 @@ def test_remove_spikes(lazy):
     )
 
 
-def test_remove_spikes_min_version_scipy_error():
+@pytest.mark.parametrize("lazy", (False, True))
+def test_remove_spikes_axes(lazy):
+    if lazy:
+        pytest.importorskip("dask_image")
+    else:
+        pytest.importorskip("scipy", minversion="1.11")
+
+    rng = np.random_default_rng(0)
+    data = rng.random(size=(10, 10, 10))
+    data[:, :, 0] = 1e5
+
+    s = hs.data.two_gaussians().T
+    if lazy:
+        s = s.as_lazy()
+
+
+def test_remove_spikes_error():
     s = hs.data.two_gaussians()
     if Version(scipy.__version__) < Version("1.11"):
         with pytest.raises(ImportError):
             s.remove_spikes()
+        return
+
+    # create a signals with nan
+    s.data = np.where(s.data > 500, np.nan, s.data)
+    with pytest.raises(ValueError):
+        s.remove_spikes()
