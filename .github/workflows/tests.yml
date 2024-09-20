@@ -103,8 +103,6 @@ jobs:
           pytest ${{ env.PYTEST_ARGS }} -n ${{ steps.cpus.outputs.count }} --cov=. --cov-report=xml
 
       - name: Run doctest (Docstring)
-        if: ${{ matrix.PYTHON_VERSION != '3.8' }}
-        # `remove_spikes` docstring needs scipy >= 1.11 which isn't available on python 3.8
         run: |
           pytest ${{ env.PYTEST_ARGS }} --doctest-modules --ignore=hyperspy/tests
 
