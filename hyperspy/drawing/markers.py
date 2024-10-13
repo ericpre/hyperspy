@@ -320,7 +320,12 @@ class Markers:
 
     @offset_transform.setter
     def offset_transform(self, value):
-        self._set_transform(value, attr="_offset_transform")
+        attr = (
+            "_offset_transform"
+            if Version(matplotlib.__version__) >= Version("3.6")
+            else "_transOffset"
+        )
+        self._set_transform(value, attr=attr)
 
     @property
     def transform(self):
