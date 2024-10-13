@@ -34,6 +34,12 @@ from hyperspy.misc.utils import isiterable
 
 _logger = logging.getLogger(__name__)
 
+_offset_transform_key = (
+    "offset_transform"
+    if Version(matplotlib.__version__) >= Version("3.6")
+    else "transOffset"
+)
+
 
 def convert_positions(peaks, signal_axes):
     new_data = np.empty(peaks.shape[:-1] + (len(signal_axes),))
@@ -316,16 +322,11 @@ class Markers:
     @property
     def offset_transform(self):
         """The tranform being used for the ``offsets`` values."""
-        return self._get_transform(attr="_offset_transform")
+        return self._get_transform(attr=f"_{_offset_transform_key}")
 
     @offset_transform.setter
     def offset_transform(self, value):
-        attr = (
-            "_offset_transform"
-            if Version(matplotlib.__version__) >= Version("3.6")
-            else "_transOffset"
-        )
-        self._set_transform(value, attr=attr)
+        self._set_transform(value, attr=f"_{_offset_transform_key}")
 
     @property
     def transform(self):
@@ -729,13 +730,7 @@ class Markers:
             self._collection.set(**kwds)
 
     def _initialize_collection(self):
-        key = (
-            "offset_transform"
-            if Version(matplotlib.__version__) >= Version("3.6")
-            else "transOffset"
-        )
-        kwargs = {key: self.offset_transform}
-
+        kwargs = {_offset_transform_key: self.offset_transform}
         self._collection = self._collection_class(**self.get_current_kwargs(), **kwargs)
         self._collection.set_transform(self.transform)
 
