@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with HyperSpy. If not, see <https://www.gnu.org/licenses/#GPL>.
 
+import matplotlib
+from packaging.version import Version
+
 from hyperspy.docstrings.markers import OFFSET_DOCSTRING
 from hyperspy.drawing.markers import Markers
 from hyperspy.external.matplotlib.quiver import Quiver
@@ -70,8 +73,15 @@ class Arrows(Markers):
             else:
                 args = (X, Y, U, V, C)
 
+            key = (
+                "offset_transform"
+                if Version(matplotlib.__version__) >= Version("3.6")
+                else "transOffset"
+            )
+            kwargs = {key: self.ax.transData}
+
             self._collection = self._collection_class(
-                *args, offset_transform=self.ax.transData, **self._init_kwargs
+                *args, **kwargs, **self._init_kwargs
             )
 
     def update(self):

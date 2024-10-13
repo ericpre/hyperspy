@@ -29,10 +29,12 @@ from itertools import product
 from pathlib import Path
 
 import dask.array as da
+import matplotlib
 import numpy as np
 import traits.api as t
 from dask.diagnostics import ProgressBar
 from matplotlib import pyplot as plt
+from packaging.version import Version
 from pint import UndefinedUnitError
 from rsciio.utils import rgb_tools
 from rsciio.utils.tools import ensure_directory
@@ -3051,7 +3053,12 @@ class BaseSignal(
             and axes_manager.signal_dimension in [1, 2]
         ):
             # Create default subfigure
-            fig = plt.figure(figsize=(15, 7), layout="constrained")
+            kw = (
+                {"layout": "constrained"}
+                if Version(matplotlib.__version__) >= Version("3.6")
+                else {"constrained_layout": True}
+            )
+            fig = plt.figure(figsize=(15, 7), **kw)
             subfigs = fig.subfigures(1, 2)
             kwargs["fig"] = subfigs[1]
             kwargs["navigator_kwds"] = dict(fig=subfigs[0])

@@ -20,10 +20,12 @@ import logging
 from copy import deepcopy
 
 import dask.array as da
+import matplotlib
 import matplotlib.collections as mpl_collections
 import numpy as np
 from matplotlib.patches import Patch
 from matplotlib.transforms import IdentityTransform
+from packaging.version import Version
 
 import hyperspy
 from hyperspy.events import Event, Events
@@ -722,10 +724,14 @@ class Markers:
             self._collection.set(**kwds)
 
     def _initialize_collection(self):
-        self._collection = self._collection_class(
-            **self.get_current_kwargs(),
-            offset_transform=self.offset_transform,
+        key = (
+            "offset_transform"
+            if Version(matplotlib.__version__) >= Version("3.6")
+            else "transOffset"
         )
+        kwargs = {key: self.offset_transform}
+
+        self._collection = self._collection_class(**self.get_current_kwargs(), **kwargs)
         self._collection.set_transform(self.transform)
 
     def plot(self, render_figure=True):
