@@ -20,6 +20,7 @@ import logging
 import math
 import warnings
 
+import dask
 import dask.array as da
 import numpy as np
 import numpy.ma as ma
@@ -28,7 +29,7 @@ from scipy.ndimage import gaussian_filter1d
 from scipy.signal import medfilt, savgol_filter
 
 from hyperspy._signals.common_signal1d import CommonSignal1D
-from hyperspy._signals.lazy import LazySignal
+from hyperspy._signals.lazy import LazySignal, _compute
 from hyperspy.decorators import interactive_range_selector
 from hyperspy.defaults_parser import preferences
 from hyperspy.docstrings.plot import (
@@ -1297,6 +1298,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
         inplace=True,
         display=True,
         toolkit=None,
+        show_progressbar=None,
         **kwargs,
     ):
         """
@@ -1323,32 +1325,48 @@ class Signal1D(BaseSignal, CommonSignal1D):
         s.remove_baselines(method="aspls", lam=1E7)
 
         """
+        from hyperspy._signals._signal1d_tool import _remove_baseline
+
         if method is None:
             from hyperspy.utils.baseline_removal_tool import BaselineRemoval
 
             br = BaselineRemoval(self, **kwargs)
             return br.gui(display=display, toolkit=toolkit)
         else:
-            from pybaselines import Baseline
+            # Use ProcessPoolExecutor because `BaseSignal.map`
+            # doesn't work with dask process scheduler
+            x = self.axes_manager[-1].axis
+            delayed_out = [
+                dask.delayed(_remove_baseline)(data, method, x, kwargs)
+                for data in self._iterate_signal(iterpath="flyback")
+            ]
+            arrays = [
+                da.from_delayed(
+                    delayed_out_,
+                    dtype=self.data.dtype,
+                    shape=self.axes_manager.signal_shape,
+                )
+                for delayed_out_ in delayed_out
+            ]
+            out = da.stack(arrays, axis=0).reshape(self.data.shape)
 
-            baseline_fitter = getattr(
-                Baseline(
-                    self.axes_manager[-1].axis,
-                    check_finite=False,
-                ),
-                method,
-            )
+            if not self._lazy:
+                scheduler = dask.config.get("scheduler", None)
+                # if None, it means that it wasn't set and
+                # therefore we can sense to set the scheduler
+                # without overwritting a user setting
+                if scheduler is None:
+                    _logger.info("Using processes scheduler.")
+                    scheduler = "processes"
+                if scheduler == "threads":
+                    _logger.warning("Use processes scheduler to enable parallelism.")
 
-            def baseline_fitting(data):
-                return data - baseline_fitter(data, **kwargs)[0]
+                out = _compute(out, show_progressbar, scheduler=scheduler)
 
-            return self.map(
-                baseline_fitting,
-                inplace=inplace,
-                output_signal_size=self.axes_manager.signal_shape,
-                output_dtype=float,
-                silence_warnings="non-uniform",
-            )
+            if inplace:
+                self.data = out
+            else:
+                return self._deepcopy_with_new_data(out)
 
     remove_baseline.__doc__ %= (IN_PLACE, DISPLAY_DT, TOOLKIT_DT)
 
