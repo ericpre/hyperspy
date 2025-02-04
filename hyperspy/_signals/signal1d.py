@@ -1296,9 +1296,10 @@ class Signal1D(BaseSignal, CommonSignal1D):
         self,
         method=None,
         inplace=True,
+        show_progressbar=None,
+        num_workers=None,
         display=True,
         toolkit=None,
-        show_progressbar=None,
         **kwargs,
     ):
         """
@@ -1310,6 +1311,8 @@ class Signal1D(BaseSignal, CommonSignal1D):
             If ``str``, any of the algorithm name in :class:`pybaselines.api.Baseline`.
             If ``None``, a widget is open to select an algorithm and adjust
             the parameters.
+        %s
+        %s
         %s
         %s
         %s
@@ -1333,7 +1336,7 @@ class Signal1D(BaseSignal, CommonSignal1D):
             br = BaselineRemoval(self, **kwargs)
             return br.gui(display=display, toolkit=toolkit)
         else:
-            # Use ProcessPoolExecutor because `BaseSignal.map`
+            # Use dask.delayed because `BaseSignal.map`
             # doesn't work with dask process scheduler
             x = self.axes_manager[-1].axis
             delayed_out = [
@@ -1358,17 +1361,27 @@ class Signal1D(BaseSignal, CommonSignal1D):
                 if scheduler is None:
                     _logger.info("Using processes scheduler.")
                     scheduler = "processes"
-                if scheduler == "threads":
+                elif scheduler == "threads":
                     _logger.warning("Use processes scheduler to enable parallelism.")
 
-                out = _compute(out, show_progressbar, scheduler=scheduler)
-
+                out = _compute(
+                    out,
+                    show_progressbar=show_progressbar,
+                    scheduler=scheduler,
+                    num_workers=num_workers,
+                )
             if inplace:
                 self.data = out
             else:
                 return self._deepcopy_with_new_data(out)
 
-    remove_baseline.__doc__ %= (IN_PLACE, DISPLAY_DT, TOOLKIT_DT)
+    remove_baseline.__doc__ %= (
+        IN_PLACE,
+        SHOW_PROGRESSBAR_ARG,
+        NUM_WORKERS_ARG,
+        DISPLAY_DT,
+        TOOLKIT_DT,
+    )
 
     @interactive_range_selector
     def crop_signal(

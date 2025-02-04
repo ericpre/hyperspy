@@ -106,15 +106,18 @@ def to_array(thing, chunks=None):
             raise ValueError
 
 
-def _compute(array, show_progressbar=None, **kwargs):
+def _compute(array, store_to=None, show_progressbar=None, **kwargs):
     if show_progressbar is None:
         show_progressbar = preferences.General.show_progressbar
-
     cm = dask.diagnostics.ProgressBar if show_progressbar else dummy_context_manager
-    with cm():
-        array = array.compute(**kwargs)
 
-    return array
+    with cm():
+        if store_to is not None:
+            da.store(
+                array, store_to, dtype=array.dtype, compute=True, lock=False, **kwargs
+            )
+        else:
+            return array.compute(**kwargs)
 
 
 class LazySignal(BaseSignal):
@@ -253,7 +256,7 @@ class LazySignal(BaseSignal):
         >>> s3.compute(scheduler='single-threaded')
 
         """
-        self.data = _compute(self.data, show_progressbar, **kwargs)
+        self.data = _compute(self.data, show_progressbar=show_progressbar, **kwargs)
         if close_file:
             self.close_file()
 
