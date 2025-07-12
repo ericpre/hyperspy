@@ -25,7 +25,6 @@ import dask
 import dask.array as da
 import numpy as np
 from dask.widgets import TEMPLATE_PATHS
-from rsciio.utils.tools import get_file_handle
 
 from hyperspy.defaults_parser import preferences
 from hyperspy.docstrings.signal import (
@@ -289,6 +288,9 @@ class LazySignal(BaseSignal):
         array created from an h5py DataSet (default HyperSpy hdf5 reader).
 
         """
+        # lazy import rsciio
+        from rsciio.utils.tools import get_file_handle
+
         try:
             get_file_handle(self.data).close()
         except AttributeError:
