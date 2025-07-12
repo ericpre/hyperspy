@@ -10,7 +10,7 @@ the code by writing some functions
 in compiled languages or by using Just-in-time (JIT) compilation. Before taking
 this approach, please make
 sure that the extra complexity is worth it by writing a first implementation of
-the functionality using Python and Numpy and profiling your code.
+the functionality using Python and Numpy and `profiling your code <profiling_code>`.
 
 Writing Numba code
 ------------------
