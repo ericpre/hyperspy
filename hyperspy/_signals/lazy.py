@@ -27,6 +27,7 @@ import numpy as np
 from dask.widgets import TEMPLATE_PATHS
 from rsciio.utils.tools import get_file_handle
 
+from hyperspy.defaults_parser import preferences
 from hyperspy.docstrings.signal import (
     LAZYSIGNAL_DOC,
     MANY_AXIS_PARAMETER,
@@ -892,6 +893,7 @@ class LazySignal(BaseSignal):
         num_chunks=None,
         reproject=True,
         print_info=True,
+        show_progressbar=None,
         **kwargs,
     ):
         """Perform Incremental (Batch) decomposition on the data.
@@ -932,6 +934,7 @@ class LazySignal(BaseSignal):
             If True, print information about the decomposition being performed.
             In the case of sklearn.decomposition objects, this includes the
             values of all arguments of the chosen sklearn algorithm.
+        %s
         **kwargs
             passed to the partial_fit/fit functions.
 
@@ -947,6 +950,9 @@ class LazySignal(BaseSignal):
         hyperspy.learn.rpca.ORPCA, hyperspy.learn.ornmf.ORNMF
 
         """
+        if show_progressbar is None:
+            show_progressbar = preferences.General.show_progressbar
+
         if get is None:
             get = _get()
         # Check algorithms requiring output_dimension
@@ -1095,6 +1101,8 @@ class LazySignal(BaseSignal):
                         total=nblocks,
                         leave=True,
                         desc="Learn",
+                        disable=not show_progressbar,
+                        use_dask=True,
                     ):
                         this_data.append(chunk)
                         if len(this_data) == num_chunks:
@@ -1152,7 +1160,12 @@ class LazySignal(BaseSignal):
                 )
                 H = []
                 try:
-                    for thing in progressbar(_map, total=nblocks, desc="Project"):
+                    for thing in progressbar(
+                        _map,
+                        total=nblocks,
+                        desc="Project",
+                        disable=not show_progressbar,
+                    ):
                         H.append(thing)
                 except KeyboardInterrupt:  # pragma: no cover
                     pass
@@ -1193,6 +1206,8 @@ class LazySignal(BaseSignal):
         # Print details about the decomposition we just performed
         if print_info:
             print("\n".join([str(pr) for pr in to_print]))
+
+    decomposition.__doc__ %= SHOW_PROGRESSBAR_ARG
 
     def plot(self, navigator="auto", **kwargs):
         if self.axes_manager.ragged:

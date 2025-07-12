@@ -22,18 +22,20 @@ from hyperspy.defaults_parser import preferences
 
 
 def progressbar(*args, **kwargs):
-    """Uses tqdm progressbar. This function exists for wrapping purposes only.
+    """
+    Uses tqdm progressbar. This function exists for wrapping purposes only.
 
     Original docstring follows:
     ---------------------------
     %s
     %s
     """
-    if preferences.General.nb_progressbar:
-        try:
-            return tqdm.notebook.tqdm(*args, **kwargs)
-        except:
-            pass
-    return tqdm.tqdm(*args, **kwargs)
+    if kwargs.get("use_dask"):
+        progressbar_ = tqdm.dask.TqdmCallback
+    elif preferences.General.nb_progressbar:
+        progressbar_ = tqdm.notebook.tqdm
+    else:
+        progressbar_ = tqdm.tqdm
+    return progressbar_(*args, **kwargs)
 
 progressbar.__doc__ %= (tqdm.__doc__, tqdm.__init__.__doc__)

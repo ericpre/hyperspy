@@ -30,7 +30,7 @@ from operator import attrgetter
 
 import dask.array as da
 import numpy as np
-from tqdm.dask import TqdmCallback
+import tqdm
 
 from hyperspy.defaults_parser import preferences
 from hyperspy.docstrings.signal import SHOW_PROGRESSBAR_ARG
@@ -1452,7 +1452,7 @@ def _compute(array, store_to=None, show_progressbar=None, **kwargs):
         show_progressbar = preferences.General.show_progressbar
     # this isn't compatible with distributed scheduler
     # https://docs.dask.org/en/stable/diagnostics-distributed.html#progress-bar
-    cm = TqdmCallback if show_progressbar else dummy_context_manager
+    cm = tqdm.dask.TqdmCallback if show_progressbar else dummy_context_manager
 
     with cm():
         if store_to is not None:
