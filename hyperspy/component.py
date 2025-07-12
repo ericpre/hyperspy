@@ -20,11 +20,8 @@ import logging
 from pathlib import Path
 
 import numpy as np
-import sympy
 import traits.api as t
 from dask.array import Array as dArray
-from rsciio.utils.tools import append2pathname, incremental_filename
-from sympy.utilities.lambdify import lambdify
 from traits.trait_numeric import Array
 
 from hyperspy.events import Event, Events
@@ -205,6 +202,9 @@ class Parameter(t.HasTraits):
 
     @twin_function_expr.setter
     def twin_function_expr(self, value):
+        # lazy import sympy
+        import sympy
+
         if not value:
             self._twin_function = None
             self.__twin_inverse_function = None
@@ -217,13 +217,13 @@ class Parameter(t.HasTraits):
         elif len(expr.free_symbols) == 0:
             raise ValueError("The expression must contain one variable.")
         x = tuple(expr.free_symbols)[0]
-        self._twin_function = lambdify(x, expr.evalf())
+        self._twin_function = sympy.utilities.lambdify(x, expr.evalf())
         self._twin_function_expr = value
         if not self._twin_inverse_function:
             y = sympy.Symbol(x.name + "2")
             try:
                 inv = list(sympy.solveset(sympy.Eq(y, expr), x))
-                self._twin_inverse_sympy = lambdify(y, inv)
+                self._twin_inverse_sympy = sympy.utilities.lambdify(y, inv)
                 self.__twin_inverse_function = None
             except BaseException:
                 # Not all may have a suitable solution.
@@ -253,6 +253,9 @@ class Parameter(t.HasTraits):
 
     @twin_inverse_function_expr.setter
     def twin_inverse_function_expr(self, value):
+        # lazy import sympy
+        import sympy
+
         if not value:
             self.__twin_inverse_function = None
             self._twin_inverse_function_expr = ""
@@ -265,7 +268,7 @@ class Parameter(t.HasTraits):
                 "The expression must contain one variable, it contains none."
             )
         x = tuple(expr.free_symbols)[0]
-        self.__twin_inverse_function = lambdify(x, expr.evalf())
+        self.__twin_inverse_function = sympy.utilities.lambdify(x, expr.evalf())
         self._twin_inverse_function_expr = value
 
     @property
@@ -676,6 +679,9 @@ class Parameter(t.HasTraits):
             ``hspy``.
 
         """
+        # lazy import rsciio
+        from rsciio.utils.tools import append2pathname, incremental_filename
+
         if format is None:
             format = "hspy"
         if name is None:

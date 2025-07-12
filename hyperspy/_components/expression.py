@@ -22,7 +22,6 @@ import warnings
 from functools import wraps
 
 import numpy as np
-import sympy
 
 from hyperspy.component import Component
 from hyperspy.docstrings.parameters import FUNCTION_ND_DOCSTRING
@@ -56,6 +55,9 @@ def _fill_function_args_2d(fn):
 
 
 def _parse_substitutions(string):
+    # lazy import sympy
+    import sympy
+
     splits = map(str.strip, string.split(";"))
     expr = sympy.sympify(next(splits))
     # We substitute one by one manually, as passing all at the same time does
@@ -176,6 +178,9 @@ class Expression(Component):
         check_parameter_linearity=True,
         **kwargs,
     ):
+        # lazy import sympy
+        import sympy
+
         if module is None:
             module = "numexpr"
 
@@ -253,6 +258,9 @@ class Expression(Component):
                     )
 
     def compile_function(self, module, position=False):
+        # lazy import sympy
+        import sympy
+
         """
         Compile the function and calculate the gradient automatically when
         possible.
@@ -404,6 +412,9 @@ class Expression(Component):
 
     @property
     def _constant_term(self):
+        # lazy import sympy
+        import sympy
+
         """
         Get value of constant term of component, assuming that the nonlinear
         term are fixed.
@@ -432,6 +443,9 @@ class Expression(Component):
         return float(constant_expr.evalf())
 
     def _separate_pseudocomponents(self):
+        # lazy import sympy
+        import sympy
+
         """
         Separate an expression into a group of lambdified functions
         that can compute the free parts of the expression, and a single
@@ -511,6 +525,9 @@ class Expression(Component):
 
 def _check_parameter_linearity(expr, name):
     """Check whether expression is linear for a given parameter."""
+    # lazy import sympy
+    import sympy
+
     symbol = sympy.Symbol(name)
     try:
         if not sympy.diff(expr, symbol, 2) == 0:
