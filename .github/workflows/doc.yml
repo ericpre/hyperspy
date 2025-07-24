@@ -1,6 +1,12 @@
 name: Documentation
 
-on: [push, pull_request]
+on:
+  pull_request:
+  push:
+    branches-ignore:
+      - 'dependabot/**'
+      - 'pre-commit-ci-update-config'
+  workflow_dispatch:
 
 jobs:
   Build:
@@ -12,6 +18,11 @@ jobs:
       # graphviz is required to build mermaid graph
       # optipng is required to optimize thumbnail
       install_package_ubuntu: graphviz optipng
+      check_links: true
+      doctest: false
+      SPHINXOPTS: '-W --keep-going --jobs 4'
+      ORGANISATION: 'hyperspy'
+      CACHE_GALLERY_EXAMPLES: './doc/auto_examples'
 
   Push_dev:
     needs: Build
