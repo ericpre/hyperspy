@@ -11,6 +11,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import os
 import platform
 import sys
 from datetime import datetime
@@ -437,6 +438,11 @@ sphinx_gallery_conf = {
     "ignore_pattern": "_sgskip.py",  # pattern to define which will not be executed
     "notebook_images": "https://hyperspy.org/hyperspy-doc/current/",  # folder for loading images in gallery
     "reference_url": {"hyperspy": None},
+    # number of parallel processes to use for running examples
+    # use 2 as default; for example on GitHub CI they will still be 2 workers available
+    # to run examples using multiprocessing
+    # on readthedocs, set environment variable SPHINX_GALLERY_PARALLEL to the number to 1
+    "parallel": os.getenv("SPHINX_GALLERY_PARALLEL", 2),
 }
 
 if platform.system() != "Windows":

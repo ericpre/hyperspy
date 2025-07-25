@@ -5,12 +5,15 @@ Baseline Removal
 This example shows how to remove a baseline from a 1D signal using the
 `pybaselines <https://pybaselines.readthedocs.io>`_ library.
 """
+#%%
+# Disable multiprocessing to simplify documentation build
+import dask
+dask.config.set(scheduler='single-threaded')
 
 #%%
 # Create a signal
 import hyperspy.api as hs
-s = hs.data.two_gaussians()
-
+s = hs.data.two_gaussians().inav[:"rel0.5", :"rel0.5"]
 
 #%%
 # Remove baseline using :meth:`~.api.signals.Signal1D.remove_baseline`:
