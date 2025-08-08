@@ -18,8 +18,50 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        LABEL: ['']
         EXTENSION_VERSION: ['release', 'dev']
         ROSETTASCIIO_VERSION: ['release', 'dev']
+        USE_CONDA: [false]
+        ADDITIONAL_PACKAGES: ['numpy-quaternion']
+        PLATFORM: [ubuntu-latest]
+        include:
+          - LABEL: Conda OpenBLAS
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*openblas'
+            PLATFORM: ubuntu-latest
+          - LABEL: Conda OpenBLAS
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*openblas'
+            PLATFORM: windows-latest
+          - LABEL: Conda OpenBLAS
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*openblas'
+            PLATFORM: macos-latest
+          - LABEL: Conda MKL
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*mkl'
+            PLATFORM: ubuntu-latest
+          - LABEL: Conda MKL
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*mkl'
+            PLATFORM: windows-latest
+          - LABEL: Conda MKL
+            ROSETTASCIIO_VERSION: release
+            EXTENSION_VERSION: release
+            USE_CONDA: true
+            ADDITIONAL_PACKAGES: 'libblas=*=*mkl'
+            PLATFORM: macos-13
+          - LABEL: Conda Accelerate
     # Use the "reusable workflow" from the hyperspy organisation
     uses: hyperspy/.github/.github/workflows/integration_tests.yml@main
     with:
@@ -31,6 +73,8 @@ jobs:
       # Use `numpy-quaternion` orix optional dependency as a workaround to fix
       # segmentation fault issue in orix, which occurs when numpy-quaternion is
       # not installed - reason unknown.
-      ADDITIONAL_PACKAGES: 'numpy-quaternion'
+      ADDITIONAL_PACKAGES:  ${{ matrix.ADDITIONAL_PACKAGES }}
       PIP_EXTRAS: '[all,tests]'
-      USE_CONDA: false
+      USE_CONDA: ${{ matrix.USE_CONDA }}
+      PLATFORM: ${{ matrix.PLATFORM }}
+      LABEL: ${{ matrix.LABEL }}
