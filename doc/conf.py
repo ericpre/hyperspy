@@ -48,6 +48,7 @@ extensions = [
     "sphinx_gallery.gen_gallery",
     "sphinx_copybutton",
     "sphinx_favicon",
+    "sphinx_llm.txt",
 ]
 
 linkcheck_ignore = [

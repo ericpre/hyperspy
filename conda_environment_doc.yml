@@ -12,6 +12,7 @@ dependencies:
 - sphinx-design
 - sphinx-favicon
 - sphinx-gallery
+- sphinx-llm
 - towncrier
 # required to run examples
 - holospy
