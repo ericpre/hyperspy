@@ -29,6 +29,15 @@ types of signals. Visit the [HyperSpy Website](https://hyperspy.org) to learn mo
 its extension packages and for instructions on how to install the package and get
 started in analysing your data.
 
+Key features include:
+
+- Support for multidimensional signal processing
+- Interactive data visualization and exploration
+- Machine learning tools (principal component analysis, independent component analysis, non-zero matrix factorization)
+- Model fitting and curve fitting capabilities
+- Extensive I/O support for various file formats
+- Integration with the scientific Python ecosystem (NumPy, SciPy, Matplotlib, Dask)
+
 HyperSpy is released under the GPL v3 license.
 
 **Since version 0.8.4, HyperSpy only supports Python 3.** If you need to install
