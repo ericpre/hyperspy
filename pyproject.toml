@@ -122,7 +122,7 @@ doc = [
     "sphinx-design",
     "sphinx-favicon",
     "sphinx-gallery",
-    "sphinx-llm",
+    "sphinx-llm[gen]",
     "sphinx>=1.7",
     "sphinxcontrib-mermaid",
     "sphinxcontrib-towncrier>=0.5.0a0",

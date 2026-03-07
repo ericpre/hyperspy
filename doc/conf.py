@@ -49,7 +49,18 @@ extensions = [
     "sphinx_copybutton",
     "sphinx_favicon",
     "sphinx_llm.txt",
+    "sphinx_llm.docref",
 ]
+
+
+try:
+    import langchain_ollama  # noqa: F401
+
+    # ollama is installed, add the summaries to the `llms.txt` file
+    extensions.append("sphinx_llm.docref")
+except (ModuleNotFoundError, ImportError):
+    pass
+
 
 linkcheck_ignore = [
     "https://anaconda.org",  # 403 Client Error: Forbidden for url

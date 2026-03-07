@@ -12,6 +12,7 @@ jobs:
       # graphviz is required to build mermaid graph
       # optipng is required to optimize thumbnail
       install_package_ubuntu: graphviz optipng
+      SETUP_OLLAMA: true  # setup Ollama to generate the summaries for the LLM-based extensions in the documentation build
 
   Push_dev:
     needs: Build

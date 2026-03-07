@@ -1,0 +1,8 @@
+channels:
+- conda-forge
+dependencies:
+# required to generate the summaries in the `llms.txt` file
+- ollama
+# ollama=*=cuda* # to use GPU
+- ollama-python
+- langchain-ollama
