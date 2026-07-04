@@ -18,7 +18,6 @@
 
 import logging
 import warnings
-from functools import partial
 from threading import Lock
 
 import matplotlib
@@ -137,9 +136,15 @@ class MPL_HyperExplorer:
             if self.axes_manager.navigation_dimension > 1:
                 self._get_navigation_sliders()
                 for axis in self.axes_manager.navigation_axes[:-2]:
-                    axis.events.index_changed.connect(sf.update, [])
+
+                    def _update_cb(obj, sf=sf):
+                        sf.update()
+
+                    axis.events.index_changed.connect(_update_cb)
                     self.events.closed.connect(
-                        partial(axis.events.index_changed.disconnect, sf.update), []
+                        lambda obj, ax=axis, cb=_update_cb: (
+                            ax.events.index_changed.disconnect(cb)
+                        )
                     )
             self.navigator_plot = sf
         elif len(self.navigator_data_function().shape) >= 2:
@@ -165,10 +170,15 @@ class MPL_HyperExplorer:
                 if self.axes_manager.navigation_dimension > 2:
                     self._get_navigation_sliders()
                     for axis in self.axes_manager.navigation_axes[2:]:
-                        axis.events.index_changed.connect(imf.update, [])
+
+                        def _update_cb(obj, imf=imf):
+                            imf.update()
+
+                        axis.events.index_changed.connect(_update_cb)
                         self.events.closed.connect(
-                            partial(axis.events.index_changed.disconnect, imf.update),
-                            [],
+                            lambda obj, ax=axis, cb=_update_cb: (
+                                ax.events.index_changed.disconnect(cb)
+                            )
                         )
 
             if "cmap" not in kwargs.keys() or kwargs["cmap"] is None:
@@ -230,7 +240,7 @@ class MPL_HyperExplorer:
                     self.pointer.connect_navigate()
                 self.plot_navigator(**kwargs.pop("navigator_kwds", {}))
                 if pointer is not None:
-                    self.events.closed.connect(self.pointer.disconnect, [])
+                    self.events.closed.connect(lambda obj: self.pointer.disconnect())
             self.plot_signal(**kwargs)
             if _is_widget_backend() and "fig" not in kwargs:
                 if plot_style not in ["vertical", "horizontal", None]:
@@ -309,7 +319,7 @@ class MPL_HyperExplorer:
         3. run the close method of the signal_plot and navigator_plot
         4. reset the attribute
         """
-        self.events.closed.trigger(obj=self)
+        self.events.closed.emit(self)
         for f in self.events.closed.connected:
             self.events.closed.disconnect(f)
 

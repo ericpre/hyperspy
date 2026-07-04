@@ -259,7 +259,7 @@ class WidgetBase(object):
         events.closed.
         """
         self.set_on(False, render_figure=render_figure)
-        self.events.closed.trigger(obj=self)
+        self.events.closed.emit(self)
 
     def draw_patch(self, *args):
         """Update the patch drawing."""
@@ -387,12 +387,12 @@ class DraggableWidgetBase(WidgetBase):
         relevant events, and updates the patch position.
         """
         if self._navigating:
-            with self.axes_manager.events.indices_changed.suppress():
+            with self.axes_manager.events.indices_changed.blocked():
                 for i in range(len(self.axes)):
                     self.axes[i].value = self._pos[i]
-            self.axes_manager.events.indices_changed.trigger(obj=self.axes_manager)
-        self.events.moved.trigger(self)
-        self.events.changed.trigger(self)
+            self.axes_manager.events.indices_changed.emit(self.axes_manager)
+        self.events.moved.emit(self)
+        self.events.changed.emit(self)
         self._update_patch_position()
 
     def _validate_pos(self, pos):
@@ -660,8 +660,8 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
 
     def _size_changed(self):
         """Triggers resize and changed events, and updates the patch."""
-        self.events.resized.trigger(self)
-        self.events.changed.trigger(self)
+        self.events.resized.emit(self)
+        self.events.changed.emit(self)
         self._update_patch_size()
 
     def get_size_in_indices(self):
@@ -754,10 +754,10 @@ class ResizableDraggableWidgetBase(DraggableWidgetBase):
             # Then fire events
             if not self.no_events_while_dragging or not self.picked:
                 if moved:
-                    self.events.moved.trigger(self)
+                    self.events.moved.emit(self)
                 if resized:
-                    self.events.resized.trigger(self)
-                self.events.changed.trigger(self)
+                    self.events.resized.emit(self)
+                self.events.changed.emit(self)
 
     def button_release(self, event):
         """whenever a mouse button is released."""

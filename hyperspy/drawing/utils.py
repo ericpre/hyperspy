@@ -1349,8 +1349,12 @@ def plot_images(
         ax.get_figure().canvas.draw()
 
     for i, (image, ax_) in enumerate(zip(images, axes_list)):
-        f = partial(update_image, image, ax_, i)
-        image.events.data_changed.connect(f, [])
+        _f = partial(update_image, image, ax_, i)
+
+        def f(obj):
+            _f()
+
+        image.events.data_changed.connect(f)
         # disconnect event when closing figure
         disconnect = partial(image.events.data_changed.disconnect, f)
         on_figure_window_close(ax_.get_figure(), disconnect)
@@ -1748,8 +1752,12 @@ def plot_spectra(
             raise ValueError("auto_update=True is only supported with style='overlap'.")
 
         for s, line in zip(spectra, ax.get_lines()):
-            f = partial(update_line, s, line=line, normalise=normalise)
-            s.events.data_changed.connect(f, [])
+            _f = partial(update_line, s, line=line, normalise=normalise)
+
+            def f(obj):
+                _f()
+
+            s.events.data_changed.connect(f)
             # disconnect event when closing figure
             disconnect = partial(s.events.data_changed.disconnect, f)
             on_figure_window_close(fig, disconnect)
@@ -2003,7 +2011,7 @@ def _roi_sum(signal, roi, axes, out=None):
         # ~2x (or more for larger array) faster than nansum
         f = np.nansum if np.isnan(sliced_signal.data).any() else np.sum
         out.data[:] = f(sliced_signal.data, axis=axes)
-        out.events.data_changed.trigger(obj=out)
+        out.events.data_changed.emit(out)
     else:
         # we don't care if this is not optimised for speed since this is
         # expected to be called only when setting up the out signal
@@ -2187,7 +2195,9 @@ def plot_roi_map(
         if not single_figure:
             roi_sum.plot(cmap=cmap_, **kwargs)
             # Remove widget from signal plot when closing maps figure
-            roi_sum._plot.signal_plot.events.closed.connect(roi.remove_widget, [])
+            roi_sum._plot.signal_plot.events.closed.connect(
+                lambda obj: roi.remove_widget()
+            )
 
             if add_colored_frame:
                 _add_colored_frame(roi_sum._plot.signal_plot.ax, color_)

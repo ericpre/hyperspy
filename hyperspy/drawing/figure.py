@@ -142,7 +142,7 @@ class BlittedFigure:
         # Same snapshot-copy rationale as remove_markers (see above).
         for marker in list(self.ax_markers):
             marker.close(render_figure=False)
-        self.events.closed.trigger(obj=self)
+        self.events.closed.emit(self)
         for f in self.events.closed.connected:
             self.events.closed.disconnect(f)
         if self._draw_event_cid:

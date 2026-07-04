@@ -121,6 +121,7 @@ class ImagePlot(BlittedFigure):
         # unlike Event.connect which deduplicates via connected list,
         # canvas.mpl_connect always creates a new handler each call.
         self._key_press_cid = None
+        self._indices_changed_callback = None
         self._is_rgb = False
 
     @property
@@ -629,15 +630,22 @@ class ImagePlot(BlittedFigure):
                 "key_press_event", self.on_key_press
             )
         if self.axes_manager:
-            if self.update not in self.axes_manager.events.indices_changed.connected:
-                self.axes_manager.events.indices_changed.connect(self.update, [])
+            self._indices_changed_callback = lambda obj: self.update()
+            if (
+                self._indices_changed_callback
+                not in self.axes_manager.events.indices_changed.connected
+            ):
+                self.axes_manager.events.indices_changed.connect(
+                    self._indices_changed_callback
+                )
             if self.disconnect not in self.events.closed.connected:
-                self.events.closed.connect(self.disconnect, [])
+                self.events.closed.connect(lambda obj: self.disconnect())
 
     def disconnect(self):
         if self.axes_manager:
-            if self.update in self.axes_manager.events.indices_changed.connected:
-                self.axes_manager.events.indices_changed.disconnect(self.update)
+            callback = self._indices_changed_callback
+            if callback in self.axes_manager.events.indices_changed.connected:
+                self.axes_manager.events.indices_changed.disconnect(callback)
 
     def on_key_press(self, event):
         if event.key == "h":

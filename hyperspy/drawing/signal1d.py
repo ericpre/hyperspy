@@ -156,10 +156,14 @@ class Signal1DFigure(BlittedFigure):
             if line.axes_manager is None:
                 line.axes_manager = self.right_axes_manager
         if connect_navigation:
-            f = partial(line._auto_update_line, update_ylimits=True)
-            line.axes_manager.events.indices_changed.connect(f, [])
+            _f = partial(line._auto_update_line, update_ylimits=True)
+
+            def f(obj):
+                _f()
+
+            line.axes_manager.events.indices_changed.connect(f)
             line.events.closed.connect(
-                lambda: line.axes_manager.events.indices_changed.disconnect(f), []
+                lambda obj: line.axes_manager.events.indices_changed.disconnect(f)
             )
         line.axis = self.axis
         # Automatically asign the color if not defined
@@ -192,9 +196,14 @@ class Signal1DFigure(BlittedFigure):
             min(x_axis_lower_lims, default=None), max(x_axis_upper_lims, default=None)
         )
 
-        self.axes_manager.events.indices_changed.connect(self.update, [])
+        def _update_callback(obj):
+            self.update()
+
+        self.axes_manager.events.indices_changed.connect(_update_callback)
         self.events.closed.connect(
-            lambda: self.axes_manager.events.indices_changed.disconnect(self.update), []
+            lambda obj: self.axes_manager.events.indices_changed.disconnect(
+                _update_callback
+            )
         )
 
         if hasattr(self.figure, "tight_layout"):
@@ -563,7 +572,7 @@ class Signal1DLine(object):
             self.text.remove()
         if self.sf_lines and self in self.sf_lines:
             self.sf_lines.remove(self)
-        self.events.closed.trigger(obj=self)
+        self.events.closed.emit(self)
         for f in self.events.closed.connected:
             self.events.closed.disconnect(f)
         try:
