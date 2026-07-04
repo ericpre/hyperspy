@@ -3226,7 +3226,11 @@ class BaseSignal(FancySlicing, MVA, MVATools):
                 )
 
         self._plot.plot(**kwargs)
-        self.events.data_changed.connect(lambda obj: self.update_plot())
+
+        def _update_plot_wrapper(obj):
+            self.update_plot()
+
+        self.events.data_changed.connect(_update_plot_wrapper)
 
         # Disconnect event when closing signal
         p = (
@@ -3235,18 +3239,17 @@ class BaseSignal(FancySlicing, MVA, MVATools):
             else self._plot.navigator_plot
         )
         p.events.closed.connect(
-            lambda: self.events.data_changed.disconnect(self.update_plot), []
+            lambda obj: self.events.data_changed.disconnect(_update_plot_wrapper)
         )
         # Disconnect events to the navigator when closing navigator
         if function_to_disconnect is not None:
             self._plot.navigator_plot.events.closed.connect(
-                lambda: self.events.data_changed.disconnect(function_to_disconnect), []
+                lambda obj: self.events.data_changed.disconnect(function_to_disconnect)
             )
             self._plot.navigator_plot.events.closed.connect(
-                lambda: self.axes_manager.events.any_axis_changed.disconnect(
+                lambda obj: self.axes_manager.events.any_axis_changed.disconnect(
                     function_to_disconnect
                 ),
-                [],
             )
 
         if plot_markers:

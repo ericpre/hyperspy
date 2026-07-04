@@ -1351,7 +1351,7 @@ def plot_images(
     for i, (image, ax_) in enumerate(zip(images, axes_list)):
         _f = partial(update_image, image, ax_, i)
 
-        def f(obj):
+        def f(obj, _f=_f):
             _f()
 
         image.events.data_changed.connect(f)
@@ -1754,7 +1754,7 @@ def plot_spectra(
         for s, line in zip(spectra, ax.get_lines()):
             _f = partial(update_line, s, line=line, normalise=normalise)
 
-            def f(obj):
+            def f(obj, _f=_f):
                 _f()
 
             s.events.data_changed.connect(f)
