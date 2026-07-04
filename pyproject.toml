@@ -28,6 +28,7 @@ dependencies = [
     "natsort",
     "numpy>=1.25.0", # needed for ContratEditorTool
     "packaging",
+    "psygnal>=0.10",
     "pint>=0.10",
     "prettytable>=2.3",
     "pyyaml",
@@ -188,6 +189,13 @@ source = ["hyperspy"]
 addopts = "-ra -n auto --dist loadfile"
 filterwarnings = [
     "ignore:Matplotlib is currently using agg:UserWarning",
+    "default:The 'arguments' parameter is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:The 'kwargs' parameter with non-'all' values is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:The 'weakref=False' option is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:trigger\\(\\) is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:suppress\\(\\) is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:suppress_callback\\(\\) is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
+    "default:Events\\.suppress\\(\\) is deprecated:hyperspy.exceptions.VisibleDeprecationWarning",
 ]
 testpaths = ["hyperspy"]
 norecursedirs = [

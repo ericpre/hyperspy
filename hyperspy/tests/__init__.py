@@ -20,6 +20,7 @@ import os
 import warnings
 
 from hyperspy.defaults_parser import preferences
+from hyperspy.exceptions import VisibleDeprecationWarning
 
 preferences.General.show_progressbar = True
 
@@ -46,3 +47,40 @@ else:
     )
     # We allow extrernal warnings:
     warnings.filterwarnings("default", module="(?!hyperspy)")
+    # Event deprecation warnings are expected — downgrade to "default" so
+    # they are visible but do not cause test errors.
+    warnings.filterwarnings(
+        "default",
+        "The 'arguments' parameter is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "The 'kwargs' parameter with non-'all' values is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "The 'weakref=False' option is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "trigger() is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "suppress() is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "suppress_callback() is deprecated",
+        VisibleDeprecationWarning,
+    )
+    warnings.filterwarnings(
+        "default",
+        "Events.suppress() is deprecated",
+        VisibleDeprecationWarning,
+    )
