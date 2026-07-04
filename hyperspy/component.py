@@ -347,7 +347,7 @@ class Parameter(t.HasTraits):
         if self._number_of_elements != 1 and not isinstance(self.__value, tuple):
             self.__value = tuple(self.__value)
         if old_value != self.__value:
-            self.events.value_changed.trigger(value=self.__value, obj=self)
+            self.events.value_changed.emit(self, self.__value)
             # To update the widget connected to the value property
             self.trait_property_changed("value", old_value, self.__value)
 
@@ -377,7 +377,7 @@ class Parameter(t.HasTraits):
             return
         self._updating_twin = True
         try:
-            self.events.value_changed.trigger(value=value, obj=self)
+            self.events.value_changed.emit(self, value)
         finally:
             self._updating_twin = False
 
@@ -937,7 +937,7 @@ class Component(t.HasTraits):
         self._active = arg
         if self.active_is_multidimensional is True:
             self._store_active_value_in_array(arg)
-        self.events.active_changed.trigger(active=self._active, obj=self)
+        self.events.active_changed.emit(self, self._active)
         # To update the widget connected to the active property
         self.trait_property_changed("active", old_value, self._active)
 
