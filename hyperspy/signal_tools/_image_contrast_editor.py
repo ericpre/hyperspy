@@ -121,10 +121,11 @@ class ImageContrastEditor(t.HasTraits):
         self.plot_histogram()
 
         if self.image.axes_manager is not None:
-            self.image.axes_manager.events.indices_changed.connect(self._reset, [])
+            self._reset_wrapper = lambda obj: self._reset()
+            self.image.axes_manager.events.indices_changed.connect(self._reset_wrapper)
             self.hspy_fig.events.closed.connect(
                 lambda: self.image.axes_manager.events.indices_changed.disconnect(
-                    self._reset
+                    self._reset_wrapper
                 ),
                 [],
             )

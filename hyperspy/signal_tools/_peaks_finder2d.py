@@ -152,7 +152,9 @@ class PeaksFinder2D(t.HasTraits):
             self.signal.axes_manager.events.indices_changed.connect(
                 self._update_peak_finding, []
             )
-            self.signal._plot.signal_plot.events.closed.connect(self.disconnect, [])
+            self.signal._plot.signal_plot.events.closed.connect(
+                lambda obj: self.disconnect()
+            )
         # Set initial parameters:
         # As a convenience, if the template argument is provided, we keep it
         # even if the method is different, to be able to use it later.
@@ -238,7 +240,7 @@ class PeaksFinder2D(t.HasTraits):
 
     def compute_navigation(self):
         method = self._normalise_method_name(self.method)
-        with self.signal.axes_manager.events.indices_changed.suppress():
+        with self.signal.axes_manager.events.indices_changed.blocked():
             self.peaks.data = self.signal.find_peaks(
                 method,
                 interactive=False,
