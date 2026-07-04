@@ -502,6 +502,7 @@ class BaseModel(list):
         # is preserved.
         self._binned = None
         self._convolved = False
+        self._suppress_fetch_stored_values = False
         self.inav = ModelSpecialSlicers(self, True)
         self.isig = ModelSpecialSlicers(self, False)
 
@@ -983,9 +984,9 @@ class BaseModel(list):
         ]
         for i, component in enumerate(components):
             for line in lines:
-                component.events.active_changed.connect(line._auto_update_line, [])
+                component.events.active_changed.connect(line._auto_update_line)
                 for parameter in component.parameters:
-                    parameter.events.value_changed.connect(line._auto_update_line, [])
+                    parameter.events.value_changed.connect(line._auto_update_line)
 
     def _disconnect_parameters2update_plot(self, components):
         if self._model_line is None:
@@ -1069,9 +1070,7 @@ class BaseModel(list):
             for c in self:
                 position = c._position
                 if position:
-                    position.events.value_changed.trigger(
-                        obj=position, value=position.value
-                    )
+                    position.events.value_changed.emit(position, position.value)
             self.update_plot(render_figure=True, update_ylimits=False)
 
     def _close_plot(self):
@@ -1285,7 +1284,19 @@ class BaseModel(list):
         """Same as fetch_stored_values but without update_on_resume since
         the model plot is updated in the figure update callback.
         """
+        if self._suppress_fetch_stored_values:
+            return
         self.fetch_stored_values(only_fixed=False, update_on_resume=False)
+
+    @contextmanager
+    def _suppress_fetch(self):
+        """Suppress fetch_stored_values callback for the duration of this block."""
+        old = self._suppress_fetch_stored_values
+        self._suppress_fetch_stored_values = True
+        try:
+            yield
+        finally:
+            self._suppress_fetch_stored_values = old
 
     def fetch_values_from_array(self, array, array_std=None):
         """Fetch the parameter values from the given array, optionally also
@@ -2376,7 +2387,7 @@ class BaseModel(list):
                 self._disable_ext_bounding()
 
         if np.any(old_p0 != self.p0):
-            self.events.fitted.trigger(self)
+            self.events.fitted.emit(self)
 
         # Print details about the fit we just performed
         if print_info:
@@ -2610,9 +2621,7 @@ class BaseModel(list):
         # Fitting in a vectorized fashion is not supported. We iterate over the
         # navigation indices and fit the dataset one by one.
         i = 0
-        with self.axes_manager.events.indices_changed.suppress_callback(
-            self.fetch_stored_values
-        ):
+        with self._suppress_fetch():
             with self.axes_manager.switch_iterpath(iterpath):
                 if interactive_plot:
                     outer = utils.dummy_context_manager
@@ -2642,7 +2651,7 @@ class BaseModel(list):
                                     self.save_parameters2file(autosave_fn)
                 # Trigger the indices_changed event to update to current indices,
                 # since the callback was suppressed
-                self.axes_manager.events.indices_changed.trigger(self.axes_manager)
+                self.axes_manager.events.indices_changed.emit(self.axes_manager)
 
         if autosave is True:
             _logger.info(f"Deleting temporary file: {autosave_fn}.npz")
