@@ -23,10 +23,10 @@ def _connect_events(event, to_connect):
     try:
         for ev in event:
             # Iterable of events, connect all of them
-            ev.connect(to_connect, [])
+            ev.connect(lambda obj: to_connect())
     except TypeError:
         # It was not an iterable, connect the single event
-        event.connect(to_connect, [])
+        event.connect(lambda obj: to_connect())
 
 
 def _disconnect_events(event, to_disconnect):
@@ -115,14 +115,18 @@ class Interactive:
         self._event = event
         self._recompute_out_event = recompute_out_event
         self._has_out = has_out
+        # Create wrapper lambdas so callbacks receive positional args
+        # from emit() without passing them to the underlying methods
+        self._recompute_out_wrapper = lambda obj: self.recompute_out()
+        self._update_wrapper = lambda obj: self.update()
         if recompute_out_event:
-            _connect_events(recompute_out_event, self.recompute_out)
+            _connect_events(recompute_out_event, self._recompute_out_wrapper)
         if event:
             if has_out:
-                _connect_events(event, self.update)
+                _connect_events(event, self._update_wrapper)
             else:
                 #  We "simulate" out by triggering `recompute_out` instead.
-                _connect_events(event, self.recompute_out)
+                _connect_events(event, self._recompute_out_wrapper)
 
     def recompute_out(self):
         out = self.f(*self.args, **self.kwargs)
@@ -134,7 +138,7 @@ class Interactive:
         else:
             self.out.data = out.data
         self.out.axes_manager.update_axes_attributes_from(out.axes_manager._axes)
-        self.out.events.data_changed.trigger(self.out)
+        self.out.events.data_changed.emit(self.out)
 
     def update(self):
         self.f(*self.args, out=self.out, **self.kwargs)
@@ -160,12 +164,12 @@ class Interactive:
         # the event system's internal callback registries and could
         # never be garbage-collected.
         if self._recompute_out_event:
-            _disconnect_events(self._recompute_out_event, self.recompute_out)
+            _disconnect_events(self._recompute_out_event, self._recompute_out_wrapper)
         if self._event:
             if self._has_out:
-                _disconnect_events(self._event, self.update)
+                _disconnect_events(self._event, self._update_wrapper)
             else:
-                _disconnect_events(self._event, self.recompute_out)
+                _disconnect_events(self._event, self._recompute_out_wrapper)
         self._event = None
         self._recompute_out_event = None
 

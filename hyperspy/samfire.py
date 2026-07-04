@@ -564,10 +564,10 @@ class Samfire:
             ind = self.model.axes_manager.indices[::-1]
             isgood = self.metadata.goodness_test.test(self.model, ind)
             self.active_strategy.update(ind, isgood, 0)
-            mark.events.data_changed.trigger(mark)
+            mark.events.data_changed.emit(mark)
 
         self.model.plot()
-        self.model.events.fitted.connect(update_when_triggered, [])
+        self.model.events.fitted.connect(lambda obj: update_when_triggered())
         self.model._plot.signal_plot.events.closed.connect(
             lambda: self.model.events.fitted.disconnect(update_when_triggered), []
         )
