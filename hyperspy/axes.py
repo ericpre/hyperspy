@@ -344,7 +344,7 @@ class BaseDataAxis(t.HasTraits):
 
     @t.observe("index")
     def _index_changed(self, event=None):
-        self.events.index_changed.trigger(obj=self, index=self.index)
+        self.events.index_changed.emit(self, self.index)
         if not self._suppress_update_value:
             new_value = self.axis[self.index]
             if new_value != self.value:
@@ -357,7 +357,7 @@ class BaseDataAxis(t.HasTraits):
         if old_index != new_index:
             self.index = new_index
             if event.new == self.axis[self.index]:
-                self.events.value_changed.trigger(obj=self, value=event.new)
+                self.events.value_changed.emit(self, event.new)
         else:
             new_value = self.index2value(new_index)
             if new_value == event.old:
@@ -368,7 +368,7 @@ class BaseDataAxis(t.HasTraits):
                     self._suppress_value_changed_trigger = False
 
             elif new_value == event.new and not self._suppress_value_changed_trigger:
-                self.events.value_changed.trigger(obj=self, value=event.new)
+                self.events.value_changed.emit(self, event.new)
 
     @property
     def index_in_array(self):
@@ -2036,20 +2036,20 @@ class AxesManager(t.HasTraits):
 
     def _on_index_changed(self, event=None):
         self._update_attributes()
-        self.events.indices_changed.trigger(obj=self)
+        self.events.indices_changed.emit(self)
 
     def _on_slice_changed(self, event=None):
         self._update_attributes()
 
     def _on_size_changed(self, event=None):
         self._update_attributes()
-        self.events.any_axis_changed.trigger(obj=self)
+        self.events.any_axis_changed.emit(self)
 
     def _on_scale_changed(self, event=None):
-        self.events.any_axis_changed.trigger(obj=self)
+        self.events.any_axis_changed.emit(self)
 
     def _on_offset_changed(self, event=None):
-        self.events.any_axis_changed.trigger(obj=self)
+        self.events.any_axis_changed.emit(self)
 
     def convert_units(self, axes=None, units=None, same_units=True, factor=0.25):
         """Convert the scale and the units of the selected axes. If the unit
@@ -2178,14 +2178,14 @@ class AxesManager(t.HasTraits):
         # To only trigger once even with several changes, we suppress here
         # and trigger manually below if there were any changes.
         changes = False
-        with self.events.any_axis_changed.suppress():
+        with self.events.any_axis_changed.blocked():
             for axis in axes:
                 changed = self._axes[axis.index_in_array].update_from(
                     axis=axis, attributes=attributes
                 )
                 changes = changes or changed
         if changes:
-            self.events.any_axis_changed.trigger(obj=self)
+            self.events.any_axis_changed.emit(self)
 
     def _update_attributes(self):
         getitem_tuple = []
@@ -2496,13 +2496,13 @@ class AxesManager(t.HasTraits):
                 "navigation dimension that is %i" % self.navigation_dimension
             )
         changes = False
-        with self.events.indices_changed.suppress():
+        with self.events.indices_changed.blocked():
             for value, axis in zip(coordinates, self.navigation_axes):
                 changes = changes or (axis.value != value)
                 axis.value = value
         # Trigger only if the indices are changed
         if changes:
-            self.events.indices_changed.trigger(obj=self)
+            self.events.indices_changed.emit(self)
 
     @property
     def indices(self):
@@ -2522,13 +2522,13 @@ class AxesManager(t.HasTraits):
                 "navigation dimension that is %i" % self.navigation_dimension
             )
         changes = False
-        with self.events.indices_changed.suppress():
+        with self.events.indices_changed.blocked():
             for index, axis in zip(indices, self.navigation_axes):
                 changes = changes or (axis.index != index)
                 axis.index = index
         # Trigger only if the indices are changed
         if changes:
-            self.events.indices_changed.trigger(obj=self)
+            self.events.indices_changed.emit(self)
 
     def _get_axis_attribute_values(self, attr):
         return [getattr(axis, attr) for axis in self._axes]
