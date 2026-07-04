@@ -171,7 +171,7 @@ class BaseROI(t.HasTraits):
         The base implementation simply triggers the changed event.
         """
         if self.is_valid():
-            self.events.changed.trigger(self)
+            self.events.changed.emit(self)
 
     def _get_ranges(self):
         """
@@ -363,7 +363,7 @@ class BaseInteractiveROI(BaseROI):
         if self.is_valid():
             if not self._applying_widget_change:
                 self._update_widgets()
-            self.events.changed.trigger(self)
+            self.events.changed.emit(self)
 
     def _update_widgets(self, exclude=None):
         """Internal function for updating the associated widgets to the
@@ -478,7 +478,9 @@ class BaseInteractiveROI(BaseROI):
                     axes=kwargs.get("axes", None),
                 )
         if self.update not in signal.axes_manager.events.any_axis_changed.connected:
-            signal.axes_manager.events.any_axis_changed.connect(self.update, [])
+            signal.axes_manager.events.any_axis_changed.connect(
+                lambda obj: self.update()
+            )
         if out is None:
             return interactive(
                 self.__call__, event=self.events.changed, signal=signal, **kwargs
@@ -499,7 +501,7 @@ class BaseInteractiveROI(BaseROI):
         """
         if self._updating_widgets:
             return
-        with self.events.suppress():
+        with self.events.blocked():
             self._bounds_check = False
             self._applying_widget_change = True
             try:
@@ -508,7 +510,7 @@ class BaseInteractiveROI(BaseROI):
                 self._bounds_check = True
                 self._applying_widget_change = False
         self._update_widgets(exclude=(widget,))
-        self.events.changed.trigger(self)
+        self.events.changed.emit(self)
 
     def add_widget(
         self, signal, axes=None, widget=None, color="green", snap=None, **kwargs
@@ -593,9 +595,11 @@ class BaseInteractiveROI(BaseROI):
             self._updating_widgets = False
 
         # Connect widget changes to on_widget_change
-        widget.events.changed.connect(self._on_widget_change, {"obj": "widget"})
+        widget._changed_handler = lambda obj: self._on_widget_change(widget=obj)
+        widget.events.changed.connect(widget._changed_handler)
         # When widget closes, remove from internal list
-        widget.events.closed.connect(self._remove_widget, {"obj": "widget"})
+        widget._closed_handler = lambda obj: self._remove_widget(widget=obj)
+        widget.events.closed.connect(widget._closed_handler)
         self.widgets.add(widget)
         self.signal_map[signal] = (widget, axes)
         return widget
@@ -603,8 +607,8 @@ class BaseInteractiveROI(BaseROI):
     add_widget.__doc__ %= PARSE_AXES_DOCSTRING
 
     def _remove_widget(self, widget, render_figure=True):
-        widget.events.closed.disconnect(self._remove_widget)
-        widget.events.changed.disconnect(self._on_widget_change)
+        widget.events.closed.disconnect(widget._closed_handler)
+        widget.events.changed.disconnect(widget._changed_handler)
         widget.close(render_figure=render_figure)
         for signal, w in self.signal_map.items():
             if w[0] == widget:
@@ -1084,7 +1088,7 @@ class RectangularROI(BaseInteractiveROI):
             try:
                 self._applying_widget_change = True
                 self._bounds_check = False
-                with self.events.changed.suppress():
+                with self.events.changed.blocked():
                     self.right += diff
                     self.left += diff
             finally:
@@ -1105,7 +1109,7 @@ class RectangularROI(BaseInteractiveROI):
             try:
                 self._applying_widget_change = True
                 self._bounds_check = False
-                with self.events.changed.suppress():
+                with self.events.changed.blocked():
                     self.top += diff
                     self.bottom += diff
             finally:
@@ -1350,7 +1354,7 @@ class CircleROI(BaseInteractiveROI):
         if out is None:
             return roi
         else:
-            out.events.data_changed.trigger(out)
+            out.events.data_changed.emit(out)
 
 
 @add_gui_method(toolkey="hyperspy.Line2DROI")
@@ -1710,7 +1714,7 @@ class Line2DROI(BaseInteractiveROI):
             if axchange:
                 ax.size = len(profile)
                 ax.scale = length / len(profile)
-            out.events.data_changed.trigger(out)
+            out.events.data_changed.emit(out)
 
 
 class PolygonROI(BaseInteractiveROI):
@@ -1925,7 +1929,7 @@ class PolygonROI(BaseInteractiveROI):
         if out is None:
             return roi
         else:
-            out.events.data_changed.trigger(out)
+            out.events.data_changed.emit(out)
 
     def __call__(self, signal, inverted=False, out=None, axes=None):
         return self._apply_roi(signal, inverted=inverted, out=out, axes=axes)
