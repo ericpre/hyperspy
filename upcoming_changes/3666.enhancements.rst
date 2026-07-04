@@ -1,0 +1,1 @@
+The Event class now supports a psygnal-native API: :meth:`~.events.Event.emit` for dispatch, :meth:`~.events.Event.blocked` for suppression, and ``__call__()`` as emit alias. Internal code has been migrated to use the new API.

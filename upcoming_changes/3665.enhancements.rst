@@ -1,0 +1,1 @@
+The event system is now backed by `psygnal <https://psygnal.readthedocs.io>`_, providing weakref-based connection management, throttling/debouncing support, and improved performance.
