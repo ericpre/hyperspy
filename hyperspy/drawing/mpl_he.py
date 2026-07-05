@@ -137,7 +137,7 @@ class MPL_HyperExplorer:
                 self._get_navigation_sliders()
                 for axis in self.axes_manager.navigation_axes[:-2]:
 
-                    def _update_cb(obj, sf=sf):
+                    def _update_cb(obj, index=None, sf=sf):
                         sf.update()
 
                     axis.events.index_changed.connect(_update_cb)
@@ -171,7 +171,7 @@ class MPL_HyperExplorer:
                     self._get_navigation_sliders()
                     for axis in self.axes_manager.navigation_axes[2:]:
 
-                        def _update_cb(obj, imf=imf):
+                        def _update_cb(obj, index=None, imf=imf):
                             imf.update()
 
                         axis.events.index_changed.connect(_update_cb)
