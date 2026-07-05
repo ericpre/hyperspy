@@ -480,7 +480,9 @@ class Signal1DLine(object):
                 kwargs["render_figure"] = len(self.ax.hspy_fig.ax_markers) == 0
             self.update(self, update_ylimits=update_ylimits, **kwargs)
 
-    def update(self, force_replot=False, render_figure=True, update_ylimits=False):
+    def update(
+        self, force_replot=False, render_figure=True, update_ylimits=False, **kwargs
+    ):
         """Update the current spectrum figure
 
         Parameters

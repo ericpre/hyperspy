@@ -261,7 +261,7 @@ class LineInSignal1D(t.HasTraits):
             finally:
                 self._updating_from_line = False
 
-    def _update_position_from_line(self):
+    def _update_position_from_line(self, *args, **kwargs):
         if self._updating_from_line:
             return
         self.position = self._line.position[0]

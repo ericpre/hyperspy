@@ -382,6 +382,12 @@ class Parameter(t.HasTraits):
             self._updating_twin = False
 
     def _set_twin(self, arg):
+        # Create lambda wrapper once and store it, so that disconnect
+        # can reference the same callable that connect registered.
+        if not hasattr(self, "_on_twin_update_wrapper"):
+            self._on_twin_update_wrapper = lambda obj, value: self._on_twin_update(
+                value
+            )
         if arg is None:
             if self.twin is not None:
                 # Store the value of the twin in order to set the
@@ -389,14 +395,16 @@ class Parameter(t.HasTraits):
                 twin_value = self.value
                 if self in self.twin._twins:
                     self.twin._twins.remove(self)
-                    self.twin.events.value_changed.disconnect(self._on_twin_update)
+                    self.twin.events.value_changed.disconnect(
+                        self._on_twin_update_wrapper
+                    )
 
                 self.__twin = arg
                 self.value = twin_value
         else:
             if self not in arg._twins:
                 arg._twins.add(self)
-                arg.events.value_changed.connect(self._on_twin_update, ["value"])
+                arg.events.value_changed.connect(self._on_twin_update_wrapper)
             self.__twin = arg
 
         if self.component is not None:

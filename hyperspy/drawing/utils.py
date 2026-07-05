@@ -2196,7 +2196,7 @@ def plot_roi_map(
             roi_sum.plot(cmap=cmap_, **kwargs)
             # Remove widget from signal plot when closing maps figure
             roi_sum._plot.signal_plot.events.closed.connect(
-                lambda obj: roi.remove_widget()
+                lambda obj, roi=roi: roi.remove_widget()
             )
 
             if add_colored_frame:

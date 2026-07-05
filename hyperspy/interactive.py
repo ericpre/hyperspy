@@ -117,8 +117,8 @@ class Interactive:
         self._has_out = has_out
         # Create wrapper lambdas so callbacks receive positional args
         # from emit() without passing them to the underlying methods
-        self._recompute_out_wrapper = lambda obj: self.recompute_out()
-        self._update_wrapper = lambda obj: self.update()
+        self._recompute_out_wrapper = lambda **kwargs: self.recompute_out()
+        self._update_wrapper = lambda **kwargs: self.update()
         if recompute_out_event:
             _connect_events(recompute_out_event, self._recompute_out_wrapper)
         if event:

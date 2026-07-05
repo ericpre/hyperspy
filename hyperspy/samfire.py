@@ -569,7 +569,7 @@ class Samfire:
         self.model.plot()
         self.model.events.fitted.connect(lambda obj: update_when_triggered())
         self.model._plot.signal_plot.events.closed.connect(
-            lambda: self.model.events.fitted.disconnect(update_when_triggered), []
+            lambda obj: self.model.events.fitted.disconnect(update_when_triggered)
         )
 
         mark.plot(navigator="slider")
@@ -600,30 +600,28 @@ class Samfire:
                 ax1.value = ax2.value
 
         mark.axes_manager.events.indices_changed.connect(
-            connect_other_navigation2, {"obj": "axes_manager"}
+            lambda obj: connect_other_navigation2(obj)
         )
         self.model.axes_manager.events.indices_changed.connect(
-            connect_other_navigation1, {"obj": "axes_manager"}
+            lambda obj: connect_other_navigation1(obj)
         )
 
         # BUG FIX: must call close() — without parens the lambda returns the
         # method object without invoking it, so the mark plot was never closed.
         self.model._plot.signal_plot.events.closed.connect(
-            lambda: mark._plot.close(), []
+            lambda obj: mark._plot.close()
         )
         self.model._plot.signal_plot.events.closed.connect(
-            lambda: self.model.axes_manager.events.indices_changed.disconnect(
+            lambda obj: self.model.axes_manager.events.indices_changed.disconnect(
                 connect_other_navigation1
-            ),
-            [],
+            )
         )
         # BUG FIX: connect_other_navigation2 was connected (line 575) but never
         # disconnected on plot close — this leaked the handler on repeated opens.
         self.model._plot.signal_plot.events.closed.connect(
-            lambda: mark.axes_manager.events.indices_changed.disconnect(
+            lambda obj: mark.axes_manager.events.indices_changed.disconnect(
                 connect_other_navigation2
-            ),
-            [],
+            )
         )
 
     def plot(self, on_count=False):
