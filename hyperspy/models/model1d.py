@@ -1004,9 +1004,8 @@ class Model1D(BaseModel):
             w._moved_handler = lambda obj: self._on_widget_moved(widget=obj)
             w.events.moved.connect(w._moved_handler)
             # Create parameter -> widget connection
-            component._position.events.value_changed.connect(
-                w._set_position, dict(value="position")
-            )
+            w._position_handler = lambda obj, value: w._set_position(position=value)
+            component._position.events.value_changed.connect(w._position_handler)
             # Map relation for close event
             w._closed_handler = lambda obj: self._on_position_widget_close(widget=obj)
             w.events.closed.connect(w._closed_handler)
@@ -1033,7 +1032,7 @@ class Model1D(BaseModel):
         self._position_widgets[parameter].remove(widget)
         if len(self._position_widgets[parameter]) == 0:
             self._position_widgets.pop(parameter)
-        parameter.events.value_changed.disconnect(widget._set_position)
+        parameter.events.value_changed.disconnect(widget._position_handler)
         widget.events.moved.disconnect(widget._moved_handler)
 
     def disable_adjust_position(self):

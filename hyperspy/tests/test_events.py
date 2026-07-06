@@ -25,6 +25,7 @@ from unittest.mock import Mock
 import pytest
 
 import hyperspy.events as he
+from hyperspy.exceptions import VisibleDeprecationWarning
 
 
 class EventsBase:
@@ -59,233 +60,248 @@ class TestEventsSuppression(EventsBase):
         self.events.c.connect(self.on_trigger)
 
     def test_simple_suppression(self):
-        with self.events.a.suppress():
-            self.trigger_check(self.events.a.trigger, False)
-            self.trigger_check(self.events.b.trigger, True)
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.a.suppress():
+                self.trigger_check(self.events.a.trigger, False)
+                self.trigger_check(self.events.b.trigger, True)
 
-        with self.events.suppress():
-            self.trigger_check(self.events.a.trigger, False)
-            self.trigger_check(self.events.b.trigger, False)
-            self.trigger_check(self.events.c.trigger, False)
-
-        self.trigger_check(self.events.a.trigger, True)
-        self.trigger_check(self.events.b.trigger, True)
-        self.trigger_check(self.events.c.trigger, True)
-
-    def test_suppression_restore(self):
-        with self.events.a.suppress():
             with self.events.suppress():
                 self.trigger_check(self.events.a.trigger, False)
                 self.trigger_check(self.events.b.trigger, False)
                 self.trigger_check(self.events.c.trigger, False)
 
-            self.trigger_check(self.events.a.trigger, False)
+            self.trigger_check(self.events.a.trigger, True)
             self.trigger_check(self.events.b.trigger, True)
             self.trigger_check(self.events.c.trigger, True)
+
+    def test_suppression_restore(self):
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.a.suppress():
+                with self.events.suppress():
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, False)
+
+                self.trigger_check(self.events.a.trigger, False)
+                self.trigger_check(self.events.b.trigger, True)
+                self.trigger_check(self.events.c.trigger, True)
 
     def test_suppresion_nesting(self):
-        with self.events.a.suppress():
-            with self.events.suppress():
-                self.events.c._suppress = False
-                self.trigger_check(self.events.a.trigger, False)
-                self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, True)
-
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.a.suppress():
                 with self.events.suppress():
+                    self.events.c._suppress = False
                     self.trigger_check(self.events.a.trigger, False)
                     self.trigger_check(self.events.b.trigger, False)
-                    self.trigger_check(self.events.c.trigger, False)
+                    self.trigger_check(self.events.c.trigger, True)
+
+                    with self.events.suppress():
+                        self.trigger_check(self.events.a.trigger, False)
+                        self.trigger_check(self.events.b.trigger, False)
+                        self.trigger_check(self.events.c.trigger, False)
+
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, True)
 
                 self.trigger_check(self.events.a.trigger, False)
-                self.trigger_check(self.events.b.trigger, False)
+                self.trigger_check(self.events.b.trigger, True)
                 self.trigger_check(self.events.c.trigger, True)
-
-            self.trigger_check(self.events.a.trigger, False)
-            self.trigger_check(self.events.b.trigger, True)
-            self.trigger_check(self.events.c.trigger, True)
 
     def test_suppression_single(self):
-        with self.events.b.suppress():
-            with self.events.a.suppress_callback(self.on_trigger):
-                self.trigger_check(self.events.a.trigger, False)
-                self.trigger_check2(self.events.a.trigger, True)
-                self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, True)
-
-            self.trigger_check(self.events.a.trigger, True)
-            self.trigger_check2(self.events.a.trigger, True)
-            self.trigger_check(self.events.b.trigger, False)
-            self.trigger_check(self.events.c.trigger, True)
-
-        # Reverse order:
-        with self.events.a.suppress_callback(self.on_trigger):
+        with pytest.warns(VisibleDeprecationWarning):
             with self.events.b.suppress():
-                self.trigger_check(self.events.a.trigger, False)
-                self.trigger_check2(self.events.a.trigger, True)
-                self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, True)
-
-            self.trigger_check(self.events.a.trigger, False)
-            self.trigger_check2(self.events.a.trigger, True)
-            self.trigger_check(self.events.b.trigger, True)
-            self.trigger_check(self.events.c.trigger, True)
-
-    def test_exception_event(self):
-        with pytest.raises(ValueError):
-            try:
-                with self.events.a.suppress():
-                    self.trigger_check(self.events.a.trigger, False)
-                    self.trigger_check(self.events.b.trigger, True)
-                    self.trigger_check(self.events.c.trigger, True)
-                    raise ValueError()
-            finally:
-                self.trigger_check(self.events.a.trigger, True)
-                self.trigger_check(self.events.b.trigger, True)
-                self.trigger_check(self.events.c.trigger, True)
-
-    def test_exception_events(self):
-        with pytest.raises(ValueError):
-            try:
-                with self.events.suppress():
-                    self.trigger_check(self.events.a.trigger, False)
-                    self.trigger_check(self.events.b.trigger, False)
-                    self.trigger_check(self.events.c.trigger, False)
-                    raise ValueError()
-            finally:
-                self.trigger_check(self.events.a.trigger, True)
-                self.trigger_check(self.events.b.trigger, True)
-                self.trigger_check(self.events.c.trigger, True)
-
-    def test_exception_single(self):
-        with pytest.raises(ValueError):
-            try:
                 with self.events.a.suppress_callback(self.on_trigger):
                     self.trigger_check(self.events.a.trigger, False)
                     self.trigger_check2(self.events.a.trigger, True)
-                    self.trigger_check(self.events.b.trigger, True)
+                    self.trigger_check(self.events.b.trigger, False)
                     self.trigger_check(self.events.c.trigger, True)
-                    raise ValueError()
-            finally:
+
                 self.trigger_check(self.events.a.trigger, True)
+                self.trigger_check2(self.events.a.trigger, True)
+                self.trigger_check(self.events.b.trigger, False)
+                self.trigger_check(self.events.c.trigger, True)
+
+            # Reverse order:
+            with self.events.a.suppress_callback(self.on_trigger):
+                with self.events.b.suppress():
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, True)
+
+                self.trigger_check(self.events.a.trigger, False)
                 self.trigger_check2(self.events.a.trigger, True)
                 self.trigger_check(self.events.b.trigger, True)
                 self.trigger_check(self.events.c.trigger, True)
 
-    def test_exception_nested(self):
-        with pytest.raises(ValueError):
-            try:
-                with self.events.a.suppress_callback(self.on_trigger):
-                    try:
-                        with self.events.a.suppress():
-                            try:
-                                with self.events.suppress():
-                                    self.trigger_check(self.events.a.trigger, False)
-                                    self.trigger_check2(self.events.a.trigger, False)
-                                    self.trigger_check(self.events.b.trigger, False)
-                                    self.trigger_check(self.events.c.trigger, False)
-                                    raise ValueError()
-                            finally:
-                                self.trigger_check(self.events.a.trigger, False)
-                                self.trigger_check2(self.events.a.trigger, False)
-                                self.trigger_check(self.events.b.trigger, True)
-                                self.trigger_check(self.events.c.trigger, True)
-                    finally:
+    def test_exception_event(self):
+        with pytest.warns(VisibleDeprecationWarning):
+            with pytest.raises(ValueError):
+                try:
+                    with self.events.a.suppress():
+                        self.trigger_check(self.events.a.trigger, False)
+                        self.trigger_check(self.events.b.trigger, True)
+                        self.trigger_check(self.events.c.trigger, True)
+                        raise ValueError()
+                finally:
+                    self.trigger_check(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, True)
+                    self.trigger_check(self.events.c.trigger, True)
+
+    def test_exception_events(self):
+        with pytest.warns(VisibleDeprecationWarning):
+            with pytest.raises(ValueError):
+                try:
+                    with self.events.suppress():
+                        self.trigger_check(self.events.a.trigger, False)
+                        self.trigger_check(self.events.b.trigger, False)
+                        self.trigger_check(self.events.c.trigger, False)
+                        raise ValueError()
+                finally:
+                    self.trigger_check(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, True)
+                    self.trigger_check(self.events.c.trigger, True)
+
+    def test_exception_single(self):
+        with pytest.warns(VisibleDeprecationWarning):
+            with pytest.raises(ValueError):
+                try:
+                    with self.events.a.suppress_callback(self.on_trigger):
                         self.trigger_check(self.events.a.trigger, False)
                         self.trigger_check2(self.events.a.trigger, True)
                         self.trigger_check(self.events.b.trigger, True)
                         self.trigger_check(self.events.c.trigger, True)
-            finally:
-                self.trigger_check(self.events.a.trigger, True)
-                self.trigger_check2(self.events.a.trigger, True)
-                self.trigger_check(self.events.b.trigger, True)
-                self.trigger_check(self.events.c.trigger, True)
+                        raise ValueError()
+                finally:
+                    self.trigger_check(self.events.a.trigger, True)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, True)
+                    self.trigger_check(self.events.c.trigger, True)
+
+    def test_exception_nested(self):
+        with pytest.warns(VisibleDeprecationWarning):
+            with pytest.raises(ValueError):
+                try:
+                    with self.events.a.suppress_callback(self.on_trigger):
+                        try:
+                            with self.events.a.suppress():
+                                try:
+                                    with self.events.suppress():
+                                        self.trigger_check(self.events.a.trigger, False)
+                                        self.trigger_check2(
+                                            self.events.a.trigger, False
+                                        )
+                                        self.trigger_check(self.events.b.trigger, False)
+                                        self.trigger_check(self.events.c.trigger, False)
+                                        raise ValueError()
+                                finally:
+                                    self.trigger_check(self.events.a.trigger, False)
+                                    self.trigger_check2(self.events.a.trigger, False)
+                                    self.trigger_check(self.events.b.trigger, True)
+                                    self.trigger_check(self.events.c.trigger, True)
+                        finally:
+                            self.trigger_check(self.events.a.trigger, False)
+                            self.trigger_check2(self.events.a.trigger, True)
+                            self.trigger_check(self.events.b.trigger, True)
+                            self.trigger_check(self.events.c.trigger, True)
+                finally:
+                    self.trigger_check(self.events.a.trigger, True)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, True)
+                    self.trigger_check(self.events.c.trigger, True)
 
     def test_suppress_wrong(self):
-        with self.events.a.suppress_callback(f_a):
-            self.trigger_check(self.events.a.trigger, True)
-            self.trigger_check2(self.events.a.trigger, True)
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.a.suppress_callback(f_a):
+                self.trigger_check(self.events.a.trigger, True)
+                self.trigger_check2(self.events.a.trigger, True)
 
     def test_suppressor_init_args(self):
-        with self.events.b.suppress():
-            es = he.EventSuppressor((self.events.a, self.on_trigger), self.events.c)
-            with es.suppress():
-                self.trigger_check(self.events.a.trigger, False)
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.b.suppress():
+                es = he.EventSuppressor((self.events.a, self.on_trigger), self.events.c)
+                with es.suppress():
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, False)
+                    with self.events.a.suppress_callback(self.on_trigger2):
+                        self.trigger_check2(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+
+                self.trigger_check(self.events.a.trigger, True)
                 self.trigger_check2(self.events.a.trigger, True)
                 self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, False)
-                with self.events.a.suppress_callback(self.on_trigger2):
-                    self.trigger_check2(self.events.a.trigger, False)
-                self.trigger_check2(self.events.a.trigger, True)
+                self.trigger_check(self.events.c.trigger, True)
 
             self.trigger_check(self.events.a.trigger, True)
             self.trigger_check2(self.events.a.trigger, True)
-            self.trigger_check(self.events.b.trigger, False)
+            self.trigger_check(self.events.b.trigger, True)
             self.trigger_check(self.events.c.trigger, True)
-
-        self.trigger_check(self.events.a.trigger, True)
-        self.trigger_check2(self.events.a.trigger, True)
-        self.trigger_check(self.events.b.trigger, True)
-        self.trigger_check(self.events.c.trigger, True)
 
     def test_suppressor_add_args(self):
-        with self.events.b.suppress():
-            es = he.EventSuppressor()
-            es.add((self.events.a, self.on_trigger), self.events.c)
-            with es.suppress():
-                self.trigger_check(self.events.a.trigger, False)
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.b.suppress():
+                es = he.EventSuppressor()
+                es.add((self.events.a, self.on_trigger), self.events.c)
+                with es.suppress():
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, False)
+                    with self.events.a.suppress_callback(self.on_trigger2):
+                        self.trigger_check2(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+
+                self.trigger_check(self.events.a.trigger, True)
                 self.trigger_check2(self.events.a.trigger, True)
                 self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, False)
-                with self.events.a.suppress_callback(self.on_trigger2):
-                    self.trigger_check2(self.events.a.trigger, False)
-                self.trigger_check2(self.events.a.trigger, True)
+                self.trigger_check(self.events.c.trigger, True)
 
             self.trigger_check(self.events.a.trigger, True)
             self.trigger_check2(self.events.a.trigger, True)
-            self.trigger_check(self.events.b.trigger, False)
+            self.trigger_check(self.events.b.trigger, True)
             self.trigger_check(self.events.c.trigger, True)
-
-        self.trigger_check(self.events.a.trigger, True)
-        self.trigger_check2(self.events.a.trigger, True)
-        self.trigger_check(self.events.b.trigger, True)
-        self.trigger_check(self.events.c.trigger, True)
 
     def test_suppressor_all_callback_in_events(self):
-        with self.events.b.suppress():
-            es = he.EventSuppressor()
-            es.add(
-                (self.events, self.on_trigger),
-            )
-            with es.suppress():
-                self.trigger_check(self.events.a.trigger, False)
+        with pytest.warns(VisibleDeprecationWarning):
+            with self.events.b.suppress():
+                es = he.EventSuppressor()
+                es.add(
+                    (self.events, self.on_trigger),
+                )
+                with es.suppress():
+                    self.trigger_check(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+                    self.trigger_check(self.events.b.trigger, False)
+                    self.trigger_check(self.events.c.trigger, False)
+                    with self.events.a.suppress_callback(self.on_trigger2):
+                        self.trigger_check2(self.events.a.trigger, False)
+                    self.trigger_check2(self.events.a.trigger, True)
+
+                self.trigger_check(self.events.a.trigger, True)
                 self.trigger_check2(self.events.a.trigger, True)
                 self.trigger_check(self.events.b.trigger, False)
-                self.trigger_check(self.events.c.trigger, False)
-                with self.events.a.suppress_callback(self.on_trigger2):
-                    self.trigger_check2(self.events.a.trigger, False)
-                self.trigger_check2(self.events.a.trigger, True)
+                self.trigger_check(self.events.c.trigger, True)
 
             self.trigger_check(self.events.a.trigger, True)
             self.trigger_check2(self.events.a.trigger, True)
-            self.trigger_check(self.events.b.trigger, False)
+            self.trigger_check(self.events.b.trigger, True)
             self.trigger_check(self.events.c.trigger, True)
 
-        self.trigger_check(self.events.a.trigger, True)
-        self.trigger_check2(self.events.a.trigger, True)
-        self.trigger_check(self.events.b.trigger, True)
-        self.trigger_check(self.events.c.trigger, True)
-
     def test_suppressor_events_container(self):
-        es = he.EventSuppressor()
-        es.add(self.events)
-        with es.suppress():
-            self.trigger_check(self.events.a.trigger, False)
-            self.trigger_check(self.events.b.trigger, False)
-            self.trigger_check(self.events.c.trigger, False)
+        with pytest.warns(VisibleDeprecationWarning):
+            es = he.EventSuppressor()
+            es.add(self.events)
+            with es.suppress():
+                self.trigger_check(self.events.a.trigger, False)
+                self.trigger_check(self.events.b.trigger, False)
+                self.trigger_check(self.events.c.trigger, False)
 
-        self.trigger_check(self.events.a.trigger, True)
-        self.trigger_check(self.events.b.trigger, True)
-        self.trigger_check(self.events.c.trigger, True)
+            self.trigger_check(self.events.a.trigger, True)
+            self.trigger_check(self.events.b.trigger, True)
+            self.trigger_check(self.events.c.trigger, True)
 
 
 def f_a(**kwargs):
@@ -310,44 +326,46 @@ class TestEventsSignatures(EventsBase):
         self.events.a = he.Event()
 
     def test_trigger_kwarg_validity(self):
-        self.events.a.connect(lambda **kwargs: 0)
-        self.events.a.connect(lambda: 0, [])
-        self.events.a.connect(lambda one: 0, ["one"])
-        self.events.a.connect(lambda one, two: 0, ["one", "two"])
+        with pytest.warns(VisibleDeprecationWarning):
+            self.events.a.connect(lambda **kwargs: 0)
+            self.events.a.connect(lambda: 0, [])
+            self.events.a.connect(lambda one: 0, ["one"])
+            self.events.a.connect(lambda one, two: 0, ["one", "two"])
 
-        def lambda1(one, two=988):
-            assert two == 988
+            def lambda1(one, two=988):
+                assert two == 988
 
-        def lambda2(one, two=988):
-            assert two != 988
+            def lambda2(one, two=988):
+                assert two != 988
 
-        def lambda3(A, B=988):
-            assert A != 988
+            def lambda3(A, B=988):
+                assert A != 988
 
-        self.events.a.connect(lambda1, ["one"])
-        self.events.a.connect(lambda2, ["one", "two"])
-        self.events.a.connect(lambda3, {"one": "A", "two": "B"})
-        self.events.a.trigger(one=2, two=5)
-        self.events.a.trigger(one=2, two=5, three=8)
-        self.events.a.connect(
-            lambda one, two: 0,
-        )
-        with pytest.raises(TypeError):
-            self.events.a.trigger(three=None)
-        with pytest.raises(TypeError):
-            self.events.a.trigger(one=2)
+            self.events.a.connect(lambda1, ["one"])
+            self.events.a.connect(lambda2, ["one", "two"])
+            self.events.a.connect(lambda3, {"one": "A", "two": "B"})
+            self.events.a.trigger(one=2, two=5)
+            self.events.a.trigger(one=2, two=5, three=8)
+            self.events.a.connect(
+                lambda one, two: 0,
+            )
+            with pytest.raises(TypeError):
+                self.events.a.trigger(three=None)
+            with pytest.raises(TypeError):
+                self.events.a.trigger(one=2)
 
     def test_connected_and_disconnect(self):
-        self.events.a.connect(f_a)
-        self.events.a.connect(f_b, ["A", "B"])
-        self.events.a.connect(f_c, {"a": "A", "b": "B"})
-        self.events.a.connect(f_d, "auto")
-        assert self.events.a.connected == set([f_a, f_b, f_c, f_d])
-        self.events.a.disconnect(f_a)
-        self.events.a.disconnect(f_b)
-        self.events.a.disconnect(f_c)
-        self.events.a.disconnect(f_d)
-        assert self.events.a.connected == set([])
+        with pytest.warns(VisibleDeprecationWarning):
+            self.events.a.connect(f_a)
+            self.events.a.connect(f_b, ["A", "B"])
+            self.events.a.connect(f_c, {"a": "A", "b": "B"})
+            self.events.a.connect(f_d, "auto")
+            assert self.events.a.connected == set([f_a, f_b, f_c, f_d])
+            self.events.a.disconnect(f_a)
+            self.events.a.disconnect(f_b)
+            self.events.a.disconnect(f_c)
+            self.events.a.disconnect(f_d)
+            assert self.events.a.connected == set([])
 
     def test_type(self):
         with pytest.raises(TypeError):
@@ -392,46 +410,48 @@ class TestTriggerArgResolution(EventsBase):
         assert self.events.c.arguments is None
 
     def test_some_kwargs_resolution(self):
-        def lambda1(x=None):
-            assert x is None
+        with pytest.warns(VisibleDeprecationWarning):
 
-        def lambda2(A):
-            assert A == "vA"
+            def lambda1(x=None):
+                assert x is None
 
-        def lambda3(A, B):
-            assert (A, B) == ("vA", "vB")
+            def lambda2(A):
+                assert A == "vA"
 
-        def lambda4(A, B):
-            assert (A, B) == ("vA", "vB")
+            def lambda3(A, B):
+                assert (A, B) == ("vA", "vB")
 
-        def lambda5(**kwargs):
-            assert (kwargs["A"], kwargs["B"]) == ("vA", "vB")
+            def lambda4(A, B):
+                assert (A, B) == ("vA", "vB")
 
-        def lambda6(A, B=None, C=None):
-            assert (A, B, C) == ("vA", "vB", None)
+            def lambda5(**kwargs):
+                assert (kwargs["A"], kwargs["B"]) == ("vA", "vB")
 
-        def lambda7(A, B=None, C=None):
-            assert (A, B, C) == ("vA", "vB", "vC")
+            def lambda6(A, B=None, C=None):
+                assert (A, B, C) == ("vA", "vB", None)
 
-        self.events.a.connect(lambda1, [])
-        self.events.a.connect(lambda2, ["A"])
-        self.events.a.connect(lambda3, ["A", "B"])
-        self.events.a.connect(lambda4, "auto")
-        with pytest.raises(NotImplementedError):
-            self.events.a.connect(function=lambda *args: 0, kwargs="auto")
+            def lambda7(A, B=None, C=None):
+                assert (A, B, C) == ("vA", "vB", "vC")
 
-        self.events.a.connect(lambda5, "auto")
-        self.events.a.connect(lambda6, ["A", "B"])
-        # Test default argument
-        self.events.b.connect(lambda7)
-        self.events.a.trigger(A="vA", B="vB")
-        self.events.b.trigger(A="vA", B="vB")
-        with pytest.raises(TypeError):
-            self.events.a.trigger(A="vA", B="vB", C="vC")
-        self.events.a.trigger(A="vA", B="vB")
-        self.events.a.trigger(B="vB", A="vA")
-        with pytest.raises(TypeError):
-            self.events.a.trigger(A="vA", C="vC", B="vB", D="vD")
+            self.events.a.connect(lambda1, [])
+            self.events.a.connect(lambda2, ["A"])
+            self.events.a.connect(lambda3, ["A", "B"])
+            self.events.a.connect(lambda4, "auto")
+            with pytest.raises(NotImplementedError):
+                self.events.a.connect(function=lambda *args: 0, kwargs="auto")
+
+            self.events.a.connect(lambda5, "auto")
+            self.events.a.connect(lambda6, ["A", "B"])
+            # Test default argument
+            self.events.b.connect(lambda7)
+            self.events.a.trigger(A="vA", B="vB")
+            self.events.b.trigger(A="vA", B="vB")
+            with pytest.raises(TypeError):
+                self.events.a.trigger(A="vA", B="vB", C="vC")
+            self.events.a.trigger(A="vA", B="vB")
+            self.events.a.trigger(B="vB", A="vA")
+            with pytest.raises(TypeError):
+                self.events.a.trigger(A="vA", C="vC", B="vB", D="vD")
 
     def test_not_connected(self):
         with pytest.raises(ValueError):
@@ -453,15 +473,17 @@ class TestTriggerArgResolution(EventsBase):
         assert f not in copy.deepcopy(self.events.a).connected
 
     def test_all_kwargs_resolution(self):
-        def lambda1(A, B):
-            assert (A, B) == ("vA", "vB")
+        with pytest.warns(VisibleDeprecationWarning):
 
-        def lambda2(x=None, y=None, A=None, B=None):
-            assert (x, y, A, B) == (None, None, "vA", "vB")
+            def lambda1(A, B):
+                assert (A, B) == ("vA", "vB")
 
-        self.events.a.connect(lambda1)
-        self.events.a.connect(lambda2)
-        self.events.a.trigger(A="vA", B="vB")
+            def lambda2(x=None, y=None, A=None, B=None):
+                assert (x, y, A, B) == (None, None, "vA", "vB")
+
+            self.events.a.connect(lambda1)
+            self.events.a.connect(lambda2)
+            self.events.a.trigger(A="vA", B="vB")
 
 
 # ─── Regression tests for psygnal-backed Event adapter ──────────────
@@ -494,8 +516,9 @@ def test_exception_abort():
 
     e.connect(boom)
     e.connect(fn_b)
-    with pytest.raises(RuntimeError):
-        e.trigger()
+    with pytest.warns(VisibleDeprecationWarning):
+        with pytest.raises(RuntimeError):
+            e.trigger()
     fn_b.assert_not_called()
 
 
@@ -503,8 +526,9 @@ def test_dict_rename():
     """Dict kwargs mapping renames trigger kwargs to function kwargs."""
     e = he.Event()
     fn = Mock()
-    e.connect(fn, {"obj": "widget"})
-    e.trigger(obj=123)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.connect(fn, {"obj": "widget"})
+        e.trigger(obj=123)
     fn.assert_called_with(widget=123)
 
 
@@ -513,11 +537,12 @@ def test_suppress_callback():
     e = he.Event()
     fn = Mock()
     e.connect(fn)
-    with e.suppress_callback(fn):
+    with pytest.warns(VisibleDeprecationWarning):
+        with e.suppress_callback(fn):
+            e.trigger()
+            assert fn.call_count == 0
         e.trigger()
-        assert fn.call_count == 0
-    e.trigger()
-    assert fn.call_count == 1
+        assert fn.call_count == 1
 
 
 def test_event_suppressor_with_events_and_callback():
@@ -527,9 +552,10 @@ def test_event_suppressor_with_events_and_callback():
     fn = Mock()
     ev.a.connect(fn)
     es = he.EventSuppressor((ev, fn), (ev.a, fn))
-    with es.suppress():
-        ev.a.trigger()
-        assert fn.call_count == 0
+    with pytest.warns(VisibleDeprecationWarning):
+        with es.suppress():
+            ev.a.trigger()
+            assert fn.call_count == 0
 
 
 def test_events_dynamic_registration():
@@ -543,8 +569,9 @@ def test_events_dynamic_registration():
 def test_arguments_validation():
     """Event with restricted arguments rejects unknown kwargs."""
     e = he.Event(arguments=["obj"])
-    with pytest.raises(TypeError, match="unexpected keyword argument"):
-        e.trigger(bad=1)
+    with pytest.warns(VisibleDeprecationWarning):
+        with pytest.raises(TypeError, match="unexpected keyword argument"):
+            e.trigger(bad=1)
 
 
 def test_kwargs_auto_mode():
@@ -556,8 +583,9 @@ def test_kwargs_auto_mode():
         recorded["b"] = b
 
     e = he.Event()
-    e.connect(fn, kwargs="auto")
-    e.trigger(a=1, b=2, extra=99)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.connect(fn, kwargs="auto")
+        e.trigger(a=1, b=2, extra=99)
     assert recorded == {"a": 1, "b": 2}
 
 
@@ -574,13 +602,15 @@ def test_kwargs_list_filter():
     """List/tuple filter passes only named kwargs with None for missing."""
     e = he.Event()
     fn = Mock()
-    e.connect(fn, ["obj"])
-    e.trigger(obj=123)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.connect(fn, ["obj"])
+        e.trigger(obj=123)
     fn.assert_called_with(obj=123)
 
     fn2 = Mock()
-    e.connect(fn2, ["obj", "missing"])
-    e.trigger(obj=456)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.connect(fn2, ["obj", "missing"])
+        e.trigger(obj=456)
     fn2.assert_called_with(obj=456, missing=None)
 
 
@@ -589,15 +619,16 @@ def test_suppress_nesting():
     e = he.Event()
     fn = Mock()
     e.connect(fn)
-    with e.suppress():
+    with pytest.warns(VisibleDeprecationWarning):
         with e.suppress():
+            with e.suppress():
+                e.trigger()
+                assert fn.call_count == 0
+            # Inner suppress exited but outer is still active
             e.trigger()
             assert fn.call_count == 0
-        # Inner suppress exited but outer is still active
         e.trigger()
-        assert fn.call_count == 0
-    e.trigger()
-    assert fn.call_count == 1
+        assert fn.call_count == 1
 
 
 # ─── Weakref connection tests ───────────────────────────────────────
@@ -621,7 +652,8 @@ class TestWeakref:
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         assert fn.call_count == 0
         # After trigger, dead weakrefs are cleaned up
@@ -633,7 +665,8 @@ class TestWeakref:
         fn = Mock()
 
         e.connect(lambda **kw: fn())
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         assert fn.call_count == 1
 
@@ -647,12 +680,14 @@ class TestWeakref:
                 fn()
 
         obj = Obj()
-        e.connect(obj.method, weakref=False)
+        with pytest.warns(VisibleDeprecationWarning):
+            e.connect(obj.method, weakref=False)
         assert len(e.connected) == 1
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         # Object is still alive (held by strong ref in _wrappers)
         assert fn.call_count == 1
@@ -676,7 +711,8 @@ class TestWeakref:
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         # Kill-switch active: strong reference preserved
         assert fn.call_count == 1
@@ -698,7 +734,8 @@ class TestWeakrefLeakDetection:
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         assert fn.call_count == 0
         assert len(e.connected) == 0
@@ -716,7 +753,8 @@ class TestWeakrefLeakDetection:
         strong = obj  # noqa: F841
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         assert fn.call_count == 1
         assert len(e.connected) == 1
@@ -735,12 +773,14 @@ class TestWeakrefLeakDetection:
         assert len(e.connected) == 1
         # The wrapper calls wm() but discards the returned bound method,
         # so fn is never invoked
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
         assert fn.call_count == 0
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
         assert fn.call_count == 0
         assert len(e.connected) == 1
 
@@ -759,7 +799,8 @@ class TestWeakrefLeakDetection:
 
         del obj
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         assert fn.call_count == 1
         assert len(e.connected) == 1
@@ -788,7 +829,8 @@ class TestWeakrefLeakDetection:
 
         del obj2
         gc.collect()
-        e.trigger()
+        with pytest.warns(VisibleDeprecationWarning):
+            e.trigger()
 
         fn1.assert_called_once()
         fn2.assert_not_called()
@@ -801,7 +843,8 @@ def test_arguments_still_works():
     e = he.Event(arguments=["obj"])
     f = Mock()
     e.connect(f)
-    e.trigger(obj=1)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.trigger(obj=1)
     f.assert_called_once_with(obj=1)
 
 
@@ -925,7 +968,7 @@ def test_blocked_nested():
 
 
 def test_trigger_still_works():
-    """Test that trigger() still works as alias (no warning when flag is False)."""
+    """Test that trigger() still works as alias (now emits deprecation warning)."""
     from unittest.mock import Mock
 
     from hyperspy.events import Event
@@ -933,7 +976,8 @@ def test_trigger_still_works():
     e = Event(arguments=["obj"])
     cb = Mock()
     e.connect(cb)
-    e.trigger(obj=42)
+    with pytest.warns(VisibleDeprecationWarning):
+        e.trigger(obj=42)
     cb.assert_called_once_with(obj=42)
 
 

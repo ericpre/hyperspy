@@ -66,7 +66,7 @@ class TestEventPerformance:
         for cb in callbacks:
             e.connect(cb)
 
-        e.trigger()
+        e.emit()
 
         for cb in callbacks:
             cb.assert_called_once()
@@ -85,11 +85,11 @@ class TestEventPerformance:
         cb_list = Mock()
         cb_dict = Mock()
 
-        e.connect(cb_all, kwargs="all")
-        e.connect(cb_list, kwargs=["a", "b"])
-        e.connect(cb_dict, kwargs={"a": "x", "b": "y"})
+        e.connect(cb_all)
+        e.connect(lambda a=None, b=None, **kwargs: cb_list(a=a, b=b))
+        e.connect(lambda a=None, b=None, **kwargs: cb_dict(x=a, y=b))
 
-        e.trigger(a=10, b=20, c=30)
+        e.emit(a=10, b=20, c=30)
 
         cb_all.assert_called_once_with(a=10, b=20, c=30)
         cb_list.assert_called_once_with(a=10, b=20)
@@ -112,14 +112,14 @@ class TestEventPerformance:
         e.connect(obj.method)
         assert len(e.connected) == 1
 
-        e.trigger()
+        e.emit()
         fn.assert_called_once()
 
         fn.reset_mock()
         del obj
         gc.collect()
 
-        e.trigger()
+        e.emit()
         fn.assert_not_called()
         assert len(e.connected) == 0
 
@@ -156,7 +156,7 @@ class TestEventPerformance:
 
         # Warm-up: let Python JIT / branch predictor settle
         for _ in range(100):
-            e.trigger()
+            e.emit()
         call_count = 0
 
         # Baseline: 10k bare function calls
@@ -172,7 +172,7 @@ class TestEventPerformance:
         trigger_times = []
         for _ in range(10000):
             t0 = time.perf_counter()
-            e.trigger()
+            e.emit()
             trigger_times.append(time.perf_counter() - t0)
 
         assert call_count == 10000 * num_callbacks
@@ -208,9 +208,9 @@ class TestEventThrottle:
         e.connect(cb)
 
         with e.throttle(1.0):
-            e.trigger()
-            e.trigger()
-            e.trigger()
+            e.emit()
+            e.emit()
+            e.emit()
 
         # Only the first trigger should dispatch (leading-edge throttle)
         cb.assert_called_once()
@@ -222,9 +222,9 @@ class TestEventThrottle:
         e.connect(cb)
 
         with e.throttle(0.001):
-            e.trigger()  # dispatches immediately (leading edge)
+            e.emit()  # dispatches immediately (leading edge)
             time.sleep(0.002)
-            e.trigger()  # interval has passed → dispatches
+            e.emit()  # interval has passed → dispatches
 
         assert cb.call_count == 2
 
@@ -235,15 +235,15 @@ class TestEventThrottle:
         e.connect(cb)
 
         with e.throttle(10.0):
-            e.trigger()
-            e.trigger()
+            e.emit()
+            e.emit()
 
         cb.assert_called_once()
 
         # Outside the context, no throttling applies
         cb.reset_mock()
-        e.trigger()
-        e.trigger()
+        e.emit()
+        e.emit()
         assert cb.call_count == 2
 
         # State fields reset to None
@@ -261,9 +261,9 @@ class TestEventDebounce:
         e.connect(cb)
 
         with e.debounce(0.01):
-            e.trigger(a=1)
-            e.trigger(a=2)
-            e.trigger(a=3)
+            e.emit(a=1)
+            e.emit(a=2)
+            e.emit(a=3)
 
         # Only the last call's args should be dispatched (on context exit)
         cb.assert_called_once_with(a=3)
@@ -279,9 +279,9 @@ class TestEventDebounce:
 
         # Short debounce interval so timer fires quickly
         with e.debounce(0.001):
-            e.trigger(a=1)
+            e.emit(a=1)
             time.sleep(0.002)  # let timer fire
-            e.trigger(a=2)
+            e.emit(a=2)
             time.sleep(0.002)  # let timer fire again
 
         # Should have dispatched value=1 (after silence) and value=2 (on exit)
@@ -294,15 +294,15 @@ class TestEventDebounce:
         e.connect(cb)
 
         with e.debounce(10.0):
-            e.trigger()
-            e.trigger()
+            e.emit()
+            e.emit()
 
         cb.assert_called_once()
 
         # Outside the context, no debouncing applies
         cb.reset_mock()
-        e.trigger()
-        e.trigger()
+        e.emit()
+        e.emit()
         assert cb.call_count == 2
 
         # State fields reset to None
@@ -317,11 +317,11 @@ class TestEventDebounce:
         cb = Mock()
 
         # Connect with dict kwargs — remap trigger "val" → function "value"
-        e.connect(cb, kwargs={"val": "value"})
+        e.connect(lambda val=None, **kwargs: cb(value=val))
 
         with e.debounce(0.01):
-            e.trigger(val=42)
-            e.trigger(val=99)
+            e.emit(val=42)
+            e.emit(val=99)
 
         # Flush on exit — last arg wins through the remap
         cb.assert_called_once_with(value=99)
