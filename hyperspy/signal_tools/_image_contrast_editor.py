@@ -124,10 +124,9 @@ class ImageContrastEditor(t.HasTraits):
             self._reset_wrapper = lambda obj: self._reset()
             self.image.axes_manager.events.indices_changed.connect(self._reset_wrapper)
             self.hspy_fig.events.closed.connect(
-                lambda: self.image.axes_manager.events.indices_changed.disconnect(
+                lambda obj: self.image.axes_manager.events.indices_changed.disconnect(
                     self._reset_wrapper
-                ),
-                [],
+                )
             )
 
             # Disconnect update image to avoid image flickering and reconnect

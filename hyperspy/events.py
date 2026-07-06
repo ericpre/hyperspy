@@ -220,14 +220,6 @@ class Event:
         TypeError: trigger() got an unexpected keyword argument 'arg3'
 
         """
-        if arguments is not None:
-            warnings.warn(
-                "The 'arguments' parameter is deprecated and will be removed "
-                "in HyperSpy 3.0. Use psygnal.Signal with type annotations "
-                "instead.",
-                VisibleDeprecationWarning,
-                stacklevel=2,
-            )
         self.__doc__ = doc
         self._arguments = tuple(arguments) if arguments else None
         self._signal = psygnal.Signal()

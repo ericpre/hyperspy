@@ -150,7 +150,7 @@ class PeaksFinder2D(t.HasTraits):
         if self.signal.axes_manager.navigation_size > 0:
             self.show_navigation_sliders = True
             self.signal.axes_manager.events.indices_changed.connect(
-                self._update_peak_finding, []
+                lambda obj: self._update_peak_finding()
             )
             self.signal._plot.signal_plot.events.closed.connect(
                 lambda obj: self.disconnect()

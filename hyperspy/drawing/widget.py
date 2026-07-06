@@ -229,15 +229,14 @@ class WidgetBase(object):
         """
         if self._navigating:
             self.disconnect_navigate()
-        self.axes_manager.events.indices_changed.connect(
-            self._on_navigate, {"obj": "axes_manager"}
-        )
+        self._navigate_handler = lambda obj: self._on_navigate(axes_manager=obj)
+        self.axes_manager.events.indices_changed.connect(self._navigate_handler)
         self._on_navigate(self.axes_manager)  # Update our position
         self._navigating = True
 
     def disconnect_navigate(self):
         """Disconnect a previous naivgation connection."""
-        self.axes_manager.events.indices_changed.disconnect(self._on_navigate)
+        self.axes_manager.events.indices_changed.disconnect(self._navigate_handler)
         self._navigating = False
 
     def _on_navigate(self, axes_manager):

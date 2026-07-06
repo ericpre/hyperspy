@@ -18,6 +18,7 @@
 
 import copy
 import gc
+import warnings
 import weakref
 from unittest.mock import Mock
 
@@ -808,11 +809,17 @@ def test_arguments_still_works():
 
 
 def test_deprecation_arguments():
-    """Test that Event(arguments=...) emits VisibleDeprecationWarning."""
+    """Test that Event(arguments=...) no longer emits a deprecation warning.
+
+    The deprecation was premature — psygnal.Signal type annotations are not active yet,
+    so ``arguments`` is still the primary way to define event signatures during the
+    transition. The warning is deferred to a future migration phase.
+    """
 
     from hyperspy.exceptions import VisibleDeprecationWarning
 
-    with pytest.warns(VisibleDeprecationWarning, match="arguments.*deprecated"):
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", VisibleDeprecationWarning)
         he.Event(arguments=["obj"])
 
 
