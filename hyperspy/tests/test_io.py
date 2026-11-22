@@ -104,11 +104,21 @@ class TestNonUniformAxisCheck:
         self.s = hs.signals.Signal1D(np.arange(10), axes=(axis.get_axis_dictionary(),))
         # make sure we start from a clean state
 
-    def test_io_nonuniform(self):
+    def test_io_nonuniform(self, tmp_path):
         assert self.s.axes_manager[0].is_uniform is False
-        self.s.save("tmp.hspy", overwrite=True)
-        with pytest.raises(TypeError, match="not supported for non-uniform"):
-            self.s.save("tmp.msa", overwrite=True)
+        self.s.save(tmp_path / "test.hspy")
+        msa_writer = next(plugin for plugin in IO_PLUGINS if plugin["name"] == "MSA")
+        if msa_writer["non_uniform_axis"]:
+            filename = tmp_path / "test.msa"
+            self.s.save(filename)
+            loaded = hs.load(filename)
+            np.testing.assert_allclose(loaded.data, self.s.data)
+            np.testing.assert_allclose(
+                loaded.axes_manager[0].axis, self.s.axes_manager[0].axis
+            )
+        else:
+            with pytest.raises(TypeError, match="not supported for non-uniform"):
+                self.s.save(tmp_path / "test.msa")
 
     def test_nonuniform_writer_characteristic(self):
         for plugin in IO_PLUGINS:
